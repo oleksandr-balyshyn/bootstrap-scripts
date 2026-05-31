@@ -28,6 +28,24 @@ func TestBuildPlanExpandsDependenciesInCatalogOrder(t *testing.T) {
 	}
 }
 
+func TestBuildPlanEmitsDependenciesBeforeDependentWhenDependencyIsLater(t *testing.T) {
+	catalog := Catalog{Modules: []Module{
+		{ID: "dotfiles", Title: "Dotfiles", DependsOn: []string{"language-installers"}},
+		{ID: "language-installers", Title: "Language Installers"},
+	}}
+
+	plan, err := BuildPlan(catalog, map[string]bool{"dotfiles": true})
+	if err != nil {
+		t.Fatalf("BuildPlan() error = %v", err)
+	}
+	if len(plan.Modules) != 2 {
+		t.Fatalf("BuildPlan() modules = %d, want 2", len(plan.Modules))
+	}
+	if plan.Modules[0].ID != "language-installers" || plan.Modules[1].ID != "dotfiles" {
+		t.Fatalf("BuildPlan() order = [%s, %s]", plan.Modules[0].ID, plan.Modules[1].ID)
+	}
+}
+
 func TestBuildPlanIgnoresFalseSelections(t *testing.T) {
 	catalog := Catalog{Modules: []Module{{ID: "known", Title: "Known"}}}
 	plan, err := BuildPlan(catalog, map[string]bool{"known": false})

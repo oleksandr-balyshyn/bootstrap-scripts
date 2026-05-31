@@ -72,6 +72,8 @@ The install catalog is configured in `configs/`; see [docs/configuration.md](doc
 
 Module dependencies are declared with `depends_on` in `configs/modules.yaml` and are automatically included in plans. For example, selecting `cargo-packages` adds `language-installers` first, and selecting `zsh-plugins` adds `shell`.
 
+Dotfile management is a selectable `dotfiles` module. It installs Dotbot first, clones `w0rxbend/system-bootstrap`, excludes `.files/arch+hypr` and `.files/opensuse`, then symlinks the configured `.files` entries into `$HOME`.
+
 Some Fedora packages do not have exact Ubuntu names, so the catalog uses Ubuntu equivalents where appropriate. Examples: `fd` becomes `fd-find`, `perf` becomes `linux-perf`, `wireshark-cli` becomes `tshark`, and GTK/WebKit development packages use Debian `-dev` names.
 
 Before executing an `apt install` command, the runner checks each package with `apt-cache show`. Unavailable package names fail the run by default; pass `--allow-missing-packages` for a best-effort run.

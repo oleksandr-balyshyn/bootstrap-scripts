@@ -31,7 +31,7 @@ modules:
         asset: terminal-cli
 ```
 
-Modules can depend on other modules. Dependencies are automatically added to the execution plan and preserve `modules.yaml` order:
+Modules can depend on other modules. Dependencies are automatically added to the execution plan and emitted before dependent modules:
 
 ```yaml
 modules:
@@ -39,7 +39,9 @@ modules:
     depends_on: [language-installers]
 ```
 
-This is used for cases where a selected module needs a provider created elsewhere, such as Cargo packages needing Rust/Cargo bootstrap, SDKMAN packages needing SDKMAN bootstrap, and Oh My Zsh plugins needing Oh My Zsh.
+This is used for cases where a selected module needs a provider created elsewhere, such as Cargo packages needing Rust/Cargo bootstrap, SDKMAN packages needing SDKMAN bootstrap, Oh My Zsh plugins needing Oh My Zsh, and dotfiles needing Dotbot.
+
+The dotfiles module installs Dotbot first, clones `w0rxbend/system-bootstrap`, removes excluded `.files` folders, then runs Dotbot with a generated config from `configs/installers/dotfiles.yaml`.
 
 The installer file owns the entity list:
 
@@ -55,6 +57,7 @@ assets:
 - `snap`: snap package entries with `classic` and `channel` options.
 - `flatpak`: Flatpak refs grouped by remote.
 - `binary`: upstream binary downloads into a managed root, with symlinks into `~/.local/bin`.
+- `dotfiles`: Git-backed dotfile checkout plus generated Dotbot link config.
 - `cargo`: Rust CLI packages installed with `cargo-binstall` or another configured cargo installer.
 - `sdkman`: SDKMAN candidates.
 - `font`: Nerd Font family lists.

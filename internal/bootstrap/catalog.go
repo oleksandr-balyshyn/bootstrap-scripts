@@ -189,6 +189,7 @@ type compiler struct {
 	sdkman  map[string]sdkmanAsset
 	fonts   map[string]fontAsset
 	binary  map[string]binaryAsset
+	dotfile map[string]dotfilesAsset
 }
 
 func loadCompiler(fsys fs.FS, dir string) (compiler, error) {
@@ -205,6 +206,7 @@ func loadCompiler(fsys fs.FS, dir string) (compiler, error) {
 		{"sdkman.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "sdkman.yaml"), &c.sdkman) }},
 		{"fonts.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "fonts.yaml"), &c.fonts) }},
 		{"binary.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "binary.yaml"), &c.binary) }},
+		{"dotfiles.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "dotfiles.yaml"), &c.dotfile) }},
 	}
 	for _, loader := range loaders {
 		if err := loader.load(); err != nil {
@@ -260,6 +262,12 @@ func (c compiler) compile(installer, id string) ([]Command, error) {
 		return asset.commands()
 	case "binary":
 		asset, ok := c.binary[id]
+		if !ok {
+			return nil, unknownAsset(installer, id)
+		}
+		return asset.commands()
+	case "dotfiles":
+		asset, ok := c.dotfile[id]
 		if !ok {
 			return nil, unknownAsset(installer, id)
 		}
@@ -459,6 +467,85 @@ type binaryTool struct {
 	Aliases  []string `yaml:"aliases"`
 }
 
+type dotfilesAsset struct {
+	ID         string        `yaml:"id"`
+	Repository string        `yaml:"repository"`
+	Ref        string        `yaml:"ref"`
+	Checkout   string        `yaml:"checkout"`
+	Dotbot     string        `yaml:"dotbot"`
+	Excludes   []string      `yaml:"excludes"`
+	Create     []string      `yaml:"create"`
+	Shell      []string      `yaml:"shell"`
+	Links      []dotfileLink `yaml:"links"`
+}
+
+type dotfileLink struct {
+	Target string `yaml:"target"`
+	Source string `yaml:"source"`
+}
+
+func (a dotfilesAsset) commands() ([]Command, error) {
+	if a.Repository == "" || a.Checkout == "" || len(a.Links) == 0 {
+		return nil, fmt.Errorf("dotfiles asset %q requires repository, checkout, and links", a.ID)
+	}
+	if a.Ref == "" {
+		a.Ref = "main"
+	}
+	if a.Dotbot == "" {
+		a.Dotbot = "${HOME}/.local/bin/dotbot"
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "repo_dir=%s\n", shellDouble(a.Checkout))
+	fmt.Fprintf(&b, "repo_url=%s\n", shellWord(a.Repository))
+	fmt.Fprintf(&b, "repo_ref=%s\n", shellWord(a.Ref))
+	fmt.Fprintf(&b, "dotbot=%s\n", shellDouble(a.Dotbot))
+	b.WriteString(`if [ ! -x "$dotbot" ]; then
+  dotbot="${HOME}/.local/share/uboot/apps/dotbot/1.24.0/dotbot"
+fi
+mkdir -p "$(dirname "$repo_dir")"
+if [ -d "$repo_dir/.git" ]; then
+  git -C "$repo_dir" fetch --depth 1 origin "$repo_ref"
+  git -C "$repo_dir" reset --hard "origin/$repo_ref"
+else
+  git clone --depth 1 --branch "$repo_ref" "$repo_url" "$repo_dir"
+fi
+`)
+	for _, exclude := range a.Excludes {
+		fmt.Fprintf(&b, "rm -rf \"$repo_dir/.files/%s\"\n", escapeShellPathSegment(exclude))
+	}
+
+	b.WriteString(`config="$repo_dir/.files/uboot.install.conf.yaml"
+cat > "$config" <<'DOTBOT_CONFIG'
+- defaults:
+    link:
+      relink: true
+      create: true
+`)
+	if len(a.Create) > 0 {
+		b.WriteString("- create:\n")
+		for _, dir := range a.Create {
+			fmt.Fprintf(&b, "    - %s\n", dir)
+		}
+	}
+	if len(a.Shell) > 0 {
+		b.WriteString("- shell:\n")
+		for _, command := range a.Shell {
+			fmt.Fprintf(&b, "    - %s\n", command)
+		}
+	}
+	b.WriteString("- link:\n")
+	for _, link := range a.Links {
+		if link.Target == "" || link.Source == "" {
+			return nil, fmt.Errorf("dotfiles asset %q has incomplete link", a.ID)
+		}
+		fmt.Fprintf(&b, "    %s: %s\n", link.Target, link.Source)
+	}
+	b.WriteString("DOTBOT_CONFIG\n")
+	b.WriteString(`"$dotbot" -d "$repo_dir/.files" -c "$config"` + "\n")
+	return []Command{{Program: "bash", Args: []string{"-lc", "set -euo pipefail\n" + b.String()}}}, nil
+}
+
 func (a binaryAsset) commands() ([]Command, error) {
 	if a.Root == "" || len(a.Tools) == 0 {
 		return nil, fmt.Errorf("binary asset %q requires root and tools", a.ID)
@@ -553,6 +640,9 @@ func (a cargoAsset) getID() string   { return a.ID }
 func (a sdkmanAsset) getID() string  { return a.ID }
 func (a fontAsset) getID() string    { return a.ID }
 func (a binaryAsset) getID() string  { return a.ID }
+func (a dotfilesAsset) getID() string {
+	return a.ID
+}
 
 func readYAML(fsys fs.FS, path string, out any) error {
 	data, err := fs.ReadFile(fsys, filepath.ToSlash(path))
@@ -581,4 +671,8 @@ func shellDouble(value string) string {
 	value = strings.ReplaceAll(value, `\`, `\\`)
 	value = strings.ReplaceAll(value, `"`, `\"`)
 	return `"` + value + `"`
+}
+
+func escapeShellPathSegment(value string) string {
+	return strings.ReplaceAll(value, `"`, `\"`)
 }

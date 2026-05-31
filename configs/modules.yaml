@@ -203,7 +203,7 @@ modules:
 
   - id: binary-dists
     title: Binary Distributions
-    description: Install upstream binary releases under ~/.apps.
+    description: Install upstream binary releases under the managed uboot app root.
     source: scripts/binary-dist.sh
     tags: [development, cli, kubernetes]
     steps:
@@ -213,6 +213,33 @@ modules:
       - name: Install binary distributions
         installer: binary
         asset: upstream-binaries
+
+  - id: dotbot
+    title: Dotbot
+    description: Install Dotbot before dotfile management runs.
+    source: https://github.com/anishathalye/dotbot
+    tags: [dotfiles, configuration]
+    steps:
+      - name: Dotbot install prerequisites
+        installer: apt
+        asset: binary-prerequisites
+      - name: Install Dotbot
+        installer: binary
+        asset: dotbot
+
+  - id: dotfiles
+    title: Dotfiles
+    description: Clone system-bootstrap and run Dotbot against .files, excluding arch+hypr and opensuse.
+    source: .files/install.conf.yaml
+    tags: [dotfiles, configuration]
+    depends_on: [dotbot, language-installers, zsh-plugins]
+    steps:
+      - name: Dotfiles prerequisites
+        installer: apt
+        asset: dotfiles-prerequisites
+      - name: Symlink dotfiles
+        installer: dotfiles
+        asset: system-bootstrap
 
   - id: language-installers
     title: Language Toolchain Installers

@@ -11,8 +11,8 @@ func TestLoadProjectCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCatalog() error = %v", err)
 	}
-	if len(catalog.Modules) != 28 {
-		t.Fatalf("loaded %d modules, want 28", len(catalog.Modules))
+	if len(catalog.Modules) != 30 {
+		t.Fatalf("loaded %d modules, want 30", len(catalog.Modules))
 	}
 
 	seen := map[string]bool{}
@@ -193,15 +193,16 @@ func TestLoadCatalogRejectsOBSPluginsWithoutStudio(t *testing.T) {
 
 func minimalConfigFS(modules string) fstest.MapFS {
 	files := fstest.MapFS{
-		"modules.yaml":            {Data: []byte(modules)},
-		"installers/apt.yaml":     {Data: []byte("assets:\n  - id: base\n    packages: [curl, git]\n")},
-		"installers/snap.yaml":    {Data: []byte("assets:\n  - id: terminal\n    packages:\n      - name: ghostty\n        classic: true\n")},
-		"installers/flatpak.yaml": {Data: []byte("assets: []\n")},
-		"installers/shell.yaml":   {Data: []byte("assets: []\n")},
-		"installers/cargo.yaml":   {Data: []byte("assets: []\n")},
-		"installers/sdkman.yaml":  {Data: []byte("assets: []\n")},
-		"installers/fonts.yaml":   {Data: []byte("assets: []\n")},
-		"installers/binary.yaml":  {Data: []byte("assets: []\n")},
+		"modules.yaml":             {Data: []byte(modules)},
+		"installers/apt.yaml":      {Data: []byte("assets:\n  - id: base\n    packages: [curl, git]\n")},
+		"installers/snap.yaml":     {Data: []byte("assets:\n  - id: terminal\n    packages:\n      - name: ghostty\n        classic: true\n")},
+		"installers/flatpak.yaml":  {Data: []byte("assets: []\n")},
+		"installers/shell.yaml":    {Data: []byte("assets: []\n")},
+		"installers/cargo.yaml":    {Data: []byte("assets: []\n")},
+		"installers/sdkman.yaml":   {Data: []byte("assets: []\n")},
+		"installers/fonts.yaml":    {Data: []byte("assets: []\n")},
+		"installers/binary.yaml":   {Data: []byte("assets: []\n")},
+		"installers/dotfiles.yaml": {Data: []byte("assets: []\n")},
 	}
 	return files
 }

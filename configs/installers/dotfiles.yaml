@@ -1,0 +1,56 @@
+assets:
+  - id: system-bootstrap
+    repository: https://github.com/w0rxbend/system-bootstrap
+    ref: main
+    checkout: ${HOME}/.local/share/uboot/dotfiles/system-bootstrap
+    dotbot: ${HOME}/.local/bin/dotbot
+    excludes: [arch+hypr, opensuse]
+    create:
+      - ~/Downloads
+      - ~/.vim/undo-history
+      - ~/.local/share/gnome-background-properties
+    shell:
+      - command -v conda >/dev/null 2>&1 && conda config --set changeps1 False || true
+    links:
+      - target: ~/.tmux.conf
+        source: .tmux.conf
+      - target: ~/.zshrc
+        source: .zshrc
+      - target: ~/.ideavimrc
+        source: .ideavimrc
+      - target: ~/.wezterm.lua
+        source: .wezterm.lua
+      - target: ~/.hidden
+        source: .hidden
+      - target: ~/.config/starship.toml
+        source: starship.toml
+      - target: ~/.config/alacritty/alacritty.toml
+        source: alacritty.toml
+      - target: ~/.config/alacritty/theme.toml
+        source: alacritty_theme.toml
+      - target: ~/.config/kitty/kitty.conf
+        source: kitty.conf
+      - target: ~/.config/zathura/zathurarc
+        source: zathurarc
+      - target: ~/.config/libinput-gestures.conf
+        source: .config/libinput-gestures.conf
+      - target: ~/.config/nvim
+        source: nvim
+      - target: ~/.config/bottom
+        source: .config/bottom
+      - target: ~/.config/btop
+        source: .config/btop
+      - target: ~/.config/ghostty
+        source: .config/ghostty
+      - target: ~/.config/zellij
+        source: .config/zellij
+      - target: ~/.config/lazygit
+        source: .config/lazygit
+      - target: ~/.config/lsd
+        source: .config/lsd
+      - target: ~/.config/yazi
+        source: .config/yazi
+      - target: ~/system-update.sh
+        source: fedora/fedora-system-update.sh
+      - target: ~/.local/share/gnome-background-properties/gnome-background-properties.xml
+        source: fedora/gnome-background-properties.xml

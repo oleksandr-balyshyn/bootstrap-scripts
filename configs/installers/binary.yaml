@@ -71,6 +71,10 @@ assets:
         archive: tar.gz
         binaries: [jj]
         aliases: [jj-scm, jujutsu]
+  - id: dotbot
+    root: ${HOME}/.local/share/uboot/apps
+    links: ${HOME}/.local/bin
+    tools:
       - name: dotbot
         version: 1.24.0
         url: https://github.com/anishathalye/dotbot/releases/download/v1.24.0/dotbot-linux-x64.tar.gz

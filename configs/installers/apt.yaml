@@ -41,6 +41,8 @@ assets:
     packages: [podman, podman-docker, buildah, podman-toolbox]
   - id: binary-prerequisites
     packages: [curl, unzip, tar, xz-utils, ca-certificates]
+  - id: dotfiles-prerequisites
+    packages: [git, curl, unzip, tar, xz-utils, ca-certificates]
   - id: language-installer-prerequisites
     packages: [curl, python3, build-essential, git, ca-certificates]
   - id: flatpak-prerequisites

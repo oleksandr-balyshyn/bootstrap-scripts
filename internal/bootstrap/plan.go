@@ -24,36 +24,31 @@ func BuildPlan(catalog Catalog, selected map[string]bool) (Plan, error) {
 		}
 	}
 
-	expanded := map[string]bool{}
+	emitted := map[string]bool{}
+	var modules []Module
 	var expand func(id string) error
 	expand = func(id string) error {
-		if expanded[id] {
+		if emitted[id] {
 			return nil
 		}
 		module, ok := known[id]
 		if !ok {
 			return fmt.Errorf("unknown module %q", id)
 		}
-		expanded[id] = true
 		for _, dep := range module.DependsOn {
 			if err := expand(dep); err != nil {
 				return err
 			}
 		}
+		emitted[id] = true
+		modules = append(modules, module)
 		return nil
 	}
-	for id, ok := range selected {
-		if ok {
-			if err := expand(id); err != nil {
+	for _, mod := range catalog.Modules {
+		if selected[mod.ID] {
+			if err := expand(mod.ID); err != nil {
 				return Plan{}, err
 			}
-		}
-	}
-
-	var modules []Module
-	for _, mod := range catalog.Modules {
-		if expanded[mod.ID] {
-			modules = append(modules, mod)
 		}
 	}
 	return Plan{Modules: modules}, nil
