@@ -1,6 +1,6 @@
 # Ubuntu Bootstrap
 
-A Go/Charm TUI bootstrapper for this Ubuntu workstation. It converts the package intent from `w0rxbend/system-bootstrap` into selectable Ubuntu modules instead of one large script.
+A Go/Charm TUI bootstrapper for this Ubuntu workstation. It converts the package intent from `w0rxbend/system-bootstrap` into selectable Ubuntu modules backed by external YAML config files.
 
 ## Run
 
@@ -26,6 +26,7 @@ Useful non-interactive commands:
 ./bin/uboot --dry-run --no-tui system-update shell terminal-cli
 ./bin/uboot --all --dry-run
 ./bin/uboot --all --yes
+./bin/uboot --config ./configs --list
 ```
 
 ## Build
@@ -34,7 +35,7 @@ Useful non-interactive commands:
 go build -o bin/uboot ./cmd/uboot
 ```
 
-If system Go is not installed yet, `bootstrap.sh` also knows how to use the local toolchain at `~/.local/opt/go1.26.2/bin/go`.
+If system Go is not installed yet, `bootstrap.sh` also knows how to use the managed local Go symlink at `~/.local/bin/go`. It also supports the temporary local compiler path used while this VM was first bootstrapped: `~/.local/opt/go1.26.2/bin/go`.
 
 ## Module Sources
 
@@ -66,8 +67,8 @@ sudo snap install ghostty --classic
 
 ## Notes
 
-The catalog lives in `internal/bootstrap/catalog.go`. Keep package groups there data-driven by module and source script. The runner logs command output under `.bootstrap/logs/` when executing.
+The install catalog is configured in `configs/`; see [docs/configuration.md](docs/configuration.md). Go code in `internal/bootstrap` loads, validates, and compiles those installer assets into executable plans. The runner logs command output under `.bootstrap/logs/` when executing.
 
 Some Fedora packages do not have exact Ubuntu names, so the catalog uses Ubuntu equivalents where appropriate. Examples: `fd` becomes `fd-find`, `perf` becomes `linux-perf`, `wireshark-cli` becomes `tshark`, and GTK/WebKit development packages use Debian `-dev` names.
 
-Before executing an `apt install` command, the runner checks each package with `apt-cache show`. Unavailable package names are skipped with a warning so one bad Ubuntu mapping does not stop an entire bootstrap run.
+Before executing an `apt install` command, the runner checks each package with `apt-cache show`. Unavailable package names fail the run by default; pass `--allow-missing-packages` for a best-effort run.

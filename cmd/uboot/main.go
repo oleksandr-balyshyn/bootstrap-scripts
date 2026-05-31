@@ -14,16 +14,22 @@ import (
 
 func main() {
 	var (
-		dryRun    = flag.Bool("dry-run", false, "print commands without executing them")
-		all       = flag.Bool("all", false, "select all modules without showing the TUI")
-		noTUI     = flag.Bool("no-tui", false, "run selected modules without the interactive TUI")
-		list      = flag.Bool("list", false, "list available modules")
-		assumeYes = flag.Bool("yes", false, "skip confirmation before executing selected modules")
+		configDir            = flag.String("config", "configs", "directory containing modules.yaml and installer asset files")
+		dryRun               = flag.Bool("dry-run", false, "print commands without executing them")
+		all                  = flag.Bool("all", false, "select all modules without showing the TUI")
+		noTUI                = flag.Bool("no-tui", false, "run selected modules without the interactive TUI")
+		list                 = flag.Bool("list", false, "list available modules")
+		assumeYes            = flag.Bool("yes", false, "skip confirmation before executing selected modules")
+		allowMissingPackages = flag.Bool("allow-missing-packages", false, "skip apt packages unavailable in current repositories")
 	)
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	catalog := bootstrap.DefaultCatalog()
+	catalog, err := bootstrap.LoadCatalog(*configDir)
+	if err != nil {
+		logger.Error("load catalog", "config", *configDir, "error", err)
+		os.Exit(1)
+	}
 
 	if *list {
 		for _, mod := range catalog.Modules {
@@ -82,7 +88,12 @@ func main() {
 	}
 
 	logDir := filepath.Join(".bootstrap", "logs")
-	runner := bootstrap.Runner{LogDir: logDir, Stdout: os.Stdout, Stderr: os.Stderr}
+	runner := bootstrap.Runner{
+		LogDir:               logDir,
+		Stdout:               os.Stdout,
+		Stderr:               os.Stderr,
+		AllowMissingPackages: *allowMissingPackages,
+	}
 	if err := runner.Run(context.Background(), plan); err != nil {
 		logger.Error("bootstrap failed", "error", err)
 		os.Exit(1)

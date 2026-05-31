@@ -1,0 +1,365 @@
+modules:
+  - id: system-update
+    title: System Update & Base
+    description: Refresh apt metadata, upgrade packages, and install base dependencies.
+    source: scripts/fedora/00-system-update.sh
+    tags: [system, base]
+    default: true
+    steps:
+      - name: Update package index
+        installer: apt
+        asset: apt-update
+      - name: Upgrade installed packages
+        installer: apt
+        asset: apt-upgrade
+      - name: Base dependencies
+        installer: apt
+        asset: base-dependencies
+      - name: PipeWire audio stack
+        installer: apt
+        asset: pipewire-audio
+
+  - id: shell
+    title: Zsh, Git, FZF & Oh My Zsh
+    description: Install shell basics and switch the current user to zsh.
+    source: scripts/fedora/00-system-update.sh
+    tags: [shell]
+    default: true
+    steps:
+      - name: Shell packages
+        installer: apt
+        asset: shell-packages
+      - name: Set default shell to zsh
+        installer: shell
+        asset: set-default-zsh
+      - name: Install Oh My Zsh
+        installer: shell
+        asset: install-oh-my-zsh
+
+  - id: terminal-cli
+    title: Terminal & CLI Tools
+    description: Terminal emulators and daily command-line tools mapped from Fedora packages.
+    source: scripts/fedora/01-packages.sh
+    tags: [cli]
+    default: true
+    steps:
+      - name: CLI packages
+        installer: apt
+        asset: terminal-cli
+      - name: Add Debian compatibility symlinks
+        installer: shell
+        asset: debian-cli-symlinks
+
+  - id: system-utilities
+    title: System Utilities
+    description: Archives, sensors, network diagnostics, secrets, container helpers, and HTTP tools.
+    source: scripts/fedora/01-packages.sh
+    tags: [system, tools]
+    steps:
+      - name: Utility packages
+        installer: apt
+        asset: system-utilities
+
+  - id: build-tools
+    title: Compilers & Build Tools
+    description: C/C++, LLVM, build systems, caching, parser generators, and firmware tooling.
+    source: scripts/fedora/01-packages.sh
+    tags: [development]
+    steps:
+      - name: Compiler and build packages
+        installer: apt
+        asset: build-tools
+
+  - id: debug-profiling
+    title: Debugging & Profiling
+    description: Debuggers, tracing, performance tools, packet tools, and protobuf compiler.
+    source: scripts/fedora/01-packages.sh
+    tags: [development]
+    steps:
+      - name: Debugging packages
+        installer: apt
+        asset: debug-profiling
+
+  - id: dev-libraries
+    title: Development Libraries
+    description: GTK, GObject, WebKitGTK, X11, and Mesa development packages.
+    source: scripts/fedora/01-packages.sh
+    tags: [development, desktop]
+    steps:
+      - name: Development library packages
+        installer: apt
+        asset: dev-libraries
+
+  - id: media-codecs
+    title: Media Players & Codecs
+    description: VLC, mpv, ffmpeg, GStreamer plugins, OpenH264, and Ubuntu restricted codecs.
+    source: scripts/fedora/01-packages.sh
+    tags: [media]
+    steps:
+      - name: Media packages
+        installer: apt
+        asset: media-codecs
+
+  - id: gpu-video
+    title: GPU & Video Decode
+    description: VA-API tools plus AMD/Intel helpers when matching hardware is detected.
+    source: scripts/fedora/01-packages.sh
+    tags: [hardware, media]
+    steps:
+      - name: VA-API packages
+        installer: apt
+        asset: gpu-video
+      - name: Install AMD GPU monitor if AMD VGA is present
+        installer: shell
+        asset: amd-gpu-tools
+      - name: Install Intel media driver if Intel VGA is present
+        installer: shell
+        asset: intel-gpu-tools
+
+  - id: typesetting-fonts
+    title: Typesetting & Fonts
+    description: TeX Live basic/XeTeX packages and Fira Code fonts.
+    source: scripts/fedora/01-packages.sh
+    tags: [documents]
+    steps:
+      - name: Typesetting packages
+        installer: apt
+        asset: typesetting-fonts
+
+  - id: desktop-ui
+    title: GNOME Desktop Tools
+    description: GNOME Tweaks and extension management tools.
+    source: scripts/fedora/01-packages.sh
+    tags: [desktop]
+    steps:
+      - name: GNOME packages
+        installer: apt
+        asset: desktop-ui
+
+  - id: virtualization
+    title: Virtualization
+    description: KVM/QEMU/libvirt stack and user group setup.
+    source: scripts/fedora/01-packages.sh
+    tags: [virtualization]
+    steps:
+      - name: Virtualization packages
+        installer: apt
+        asset: virtualization
+      - name: Add user to libvirt group
+        installer: shell
+        asset: add-user-libvirt
+
+  - id: streaming-capture
+    title: Streaming & Capture
+    description: Virtual camera loopback support.
+    source: scripts/fedora/01-packages.sh
+    tags: [media]
+    steps:
+      - name: Capture packages
+        installer: apt
+        asset: streaming-capture
+
+  - id: document-viewers
+    title: Document Viewers
+    description: Zathura and MuPDF document viewers.
+    source: scripts/fedora/01-packages.sh
+    tags: [documents]
+    steps:
+      - name: Viewer packages
+        installer: apt
+        asset: document-viewers
+
+  - id: vscode
+    title: Visual Studio Code
+    description: Configure Microsoft apt repository and install VS Code.
+    source: scripts/fedora/02-extras.sh
+    tags: [development, editor]
+    steps:
+      - name: Repository prerequisites
+        installer: apt
+        asset: vscode-prerequisites
+      - name: Install Microsoft apt key
+        installer: shell
+        asset: microsoft-apt-key
+      - name: Configure VS Code repository
+        installer: shell
+        asset: vscode-repository
+      - name: Update package index
+        installer: apt
+        asset: apt-update
+      - name: Install VS Code
+        installer: apt
+        asset: vscode
+
+  - id: containers
+    title: Containers
+    description: Podman, Docker-compatible Podman shim, Buildah, and Toolbox.
+    source: scripts/fedora/02-extras.sh
+    tags: [containers]
+    steps:
+      - name: Container packages
+        installer: apt
+        asset: containers
+
+  - id: binary-dists
+    title: Binary Distributions
+    description: Install upstream binary releases under ~/.apps.
+    source: scripts/binary-dist.sh
+    tags: [development, cli, kubernetes]
+    steps:
+      - name: Binary install prerequisites
+        installer: apt
+        asset: binary-prerequisites
+      - name: Install binary distributions
+        installer: binary
+        asset: upstream-binaries
+
+  - id: language-installers
+    title: Language Toolchain Installers
+    description: Run upstream installers for Rust, SDKMAN, NVM, pyenv, Poetry, Starship, pnpm, Juliaup, dotenvx, Miniforge, uv, and cargo-binstall.
+    source: scripts/cli-tools.sh
+    tags: [development, languages]
+    steps:
+      - name: Installer prerequisites
+        installer: apt
+        asset: language-installer-prerequisites
+      - name: Run language installers
+        installer: shell
+        asset: language-installers
+
+  - id: cargo-packages
+    title: Cargo CLI Packages
+    description: Install Rust CLI packages listed in cargo-packages.sh with cargo-binstall.
+    source: scripts/cargo-packages.sh
+    tags: [rust, cli]
+    steps:
+      - name: Install cargo packages
+        installer: cargo
+        asset: cli-tools
+
+  - id: flatpak-apps
+    title: Flatpak Desktop Apps
+    description: Install Flatpak, enable Flathub, and install desktop applications from flatpak.sh.
+    source: scripts/flatpak.sh
+    tags: [desktop, flatpak]
+    steps:
+      - name: Flatpak prerequisites
+        installer: apt
+        asset: flatpak-prerequisites
+      - name: Enable Flathub
+        installer: shell
+        asset: enable-flathub
+      - name: Flatpak desktop apps
+        installer: flatpak
+        asset: desktop-apps
+
+  - id: flatpak-obs
+    title: OBS Studio Flatpak Plugins
+    description: Install OBS Studio and OBS Flatpak plugins from flatpak-obs-plugins.sh.
+    source: scripts/flatpak-obs-plugins.sh
+    tags: [streaming, flatpak]
+    steps:
+      - name: Flatpak prerequisites
+        installer: apt
+        asset: flatpak-minimal
+      - name: Enable Flathub
+        installer: shell
+        asset: enable-flathub
+      - name: OBS Studio and plugins
+        installer: flatpak
+        asset: obs-studio
+
+  - id: local-go
+    title: Local Go Toolchain
+    description: Install Go under ~/.go and create ~/.go-workspace, matching install_golang.sh.
+    source: scripts/install_golang.sh
+    tags: [go, development]
+    steps:
+      - name: Go install prerequisites
+        installer: apt
+        asset: local-go-prerequisites
+      - name: Install local Go
+        installer: shell
+        asset: local-go
+
+  - id: nerd-fonts
+    title: Nerd Fonts
+    description: Install the Nerd Font families listed in nerd-fonts.p0.sh.
+    source: scripts/nerd-fonts.p0.sh
+    tags: [fonts, desktop]
+    steps:
+      - name: Font install prerequisites
+        installer: apt
+        asset: font-prerequisites
+      - name: Install Nerd Fonts
+        installer: font
+        asset: nerd-fonts
+
+  - id: zsh-plugins
+    title: Oh My Zsh Plugins
+    description: Install zsh-syntax-highlighting, zsh-autosuggestions, and zsh-history-substring-search.
+    source: scripts/oh-my-zsh-plugins.sh
+    tags: [shell]
+    steps:
+      - name: Plugin prerequisites
+        installer: apt
+        asset: zsh-plugin-prerequisites
+      - name: Clone plugins
+        installer: shell
+        asset: zsh-plugins
+
+  - id: sdkman-packages
+    title: SDKMAN Packages
+    description: Install SDKMAN and Java, Gradle, Maven, sbt, Scala, Micronaut, Vert.x, and VisualVM.
+    source: scripts/sdkman-packages.sh
+    tags: [jvm, development]
+    steps:
+      - name: SDKMAN prerequisites
+        installer: apt
+        asset: sdkman-prerequisites
+      - name: Install SDKMAN packages
+        installer: sdkman
+        asset: jvm-tools
+
+  - id: user-config
+    title: User Configuration
+    description: Clone tmux plugin manager, set global git identity/options, and configure time.
+    source: scripts/configurations.sh
+    tags: [configuration]
+    steps:
+      - name: Configuration prerequisites
+        installer: apt
+        asset: user-config-prerequisites
+      - name: Clone tmux plugin manager
+        installer: shell
+        asset: tmux-plugin-manager
+      - name: Configure git
+        installer: shell
+        asset: git-user-config
+      - name: Configure time
+        installer: shell
+        asset: configure-time
+
+  - id: system-config
+    title: System Configuration
+    description: Enable network time and keep RTC in UTC.
+    source: scripts/fedora/02-extras.sh
+    tags: [system]
+    steps:
+      - name: Configure time
+        installer: shell
+        asset: configure-time
+
+  - id: current-machine
+    title: Current VM Installs
+    description: Packages reconstructed from this VM's apt/snap history before the TUI project was created.
+    source: local apt/snap history
+    tags: [local]
+    default: true
+    steps:
+      - name: Current apt packages
+        installer: apt
+        asset: current-machine
+      - name: Current snap packages
+        installer: snap
+        asset: current-machine

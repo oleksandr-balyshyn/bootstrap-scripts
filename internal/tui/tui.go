@@ -51,8 +51,7 @@ func Run(catalog bootstrap.Catalog) (Result, error) {
 func defaultSelection(catalog bootstrap.Catalog) map[string]bool {
 	selected := map[string]bool{}
 	for _, mod := range catalog.Modules {
-		switch mod.ID {
-		case "system-update", "shell", "terminal-cli", "current-machine":
+		if mod.Default {
 			selected[mod.ID] = true
 		}
 	}
@@ -83,9 +82,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case " ", "x":
 			id := m.catalog.Modules[m.cursor].ID
-			m.selected[id] = !m.selected[id]
+			if m.selected[id] {
+				delete(m.selected, id)
+			} else {
+				m.selected[id] = true
+			}
 		case "a":
-			all := len(m.selected) != len(m.catalog.Modules)
+			all := selectedCount(m.selected) != len(m.catalog.Modules)
 			m.selected = map[string]bool{}
 			if all {
 				for _, mod := range m.catalog.Modules {
@@ -102,6 +105,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if len(m.catalog.Modules) == 0 {
+		return panelStyle.Render("No bootstrap modules were loaded.")
+	}
+
 	leftWidth := 46
 	if m.width > 0 && m.width < 100 {
 		leftWidth = max(34, m.width-8)
@@ -150,12 +157,17 @@ func (m model) detailView() string {
 	for _, step := range mod.Steps {
 		b.WriteString("  - " + step.Name + "\n")
 	}
+	count := selectedCount(m.selected)
+	b.WriteString(fmt.Sprintf("\nSelected modules: %d/%d\n", count, len(m.catalog.Modules)))
+	return b.String()
+}
+
+func selectedCount(selected map[string]bool) int {
 	count := 0
-	for _, ok := range m.selected {
+	for _, ok := range selected {
 		if ok {
 			count++
 		}
 	}
-	b.WriteString(fmt.Sprintf("\nSelected modules: %d/%d\n", count, len(m.catalog.Modules)))
-	return b.String()
+	return count
 }

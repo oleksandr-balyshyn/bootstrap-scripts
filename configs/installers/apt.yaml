@@ -1,0 +1,61 @@
+assets:
+  - id: apt-update
+    action: update
+  - id: apt-upgrade
+    action: upgrade
+  - id: base-dependencies
+    packages: [ca-certificates, curl, wget, gnupg2, util-linux, fuse3, software-properties-common, apt-transport-https]
+  - id: pipewire-audio
+    packages: [pipewire, pipewire-alsa, pipewire-pulse, pipewire-jack, wireplumber]
+  - id: shell-packages
+    packages: [zsh, fzf, git]
+  - id: terminal-cli
+    packages: [alacritty, kitty, bat, btop, curl, fd-find, fzf, git, htop, wl-clipboard, yq, jq, net-tools, hyperfine, asciinema, gdu, fastfetch, ripgrep]
+  - id: system-utilities
+    packages: [unzip, stress, xsensors, fontconfig, pipx, libsecret-1-0, libsecret-1-dev, podman-toolbox, wev, network-manager, foot, tig, buildah, mtr, nmap, httpie, ripgrep, zoxide]
+  - id: build-tools
+    packages: [build-essential, gcc, g++, clang, clangd, clang-format, clang-tools, clang-tidy, llvm, llvm-dev, compiler-rt, lld, lldb, make, cmake, meson, ninja-build, ccache, flex, bison, gperf, libreadline-dev, libffi-dev, libssl-dev, openssl, dfu-util, golang-go]
+  - id: debug-profiling
+    packages: [gdb, valgrind, strace, ltrace, linux-perf, tshark, protobuf-compiler]
+  - id: dev-libraries
+    packages: [libgtk-3-dev, libgtk-4-dev, gobject-introspection, libgirepository1.0-dev, libwebkitgtk-6.0-dev, libxcursor-dev, libxrandr-dev, libxi-dev, libxinerama-dev, libxxf86vm-dev, libgl1-mesa-dev, libgbm-dev, libegl1-mesa-dev, mesa-common-dev]
+  - id: media-codecs
+    packages: [vlc, mpv, gstreamer1.0-vaapi, imv, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev, gstreamer1.0-plugins-good, gstreamer1.0-plugins-base, gstreamer1.0-plugins-bad, gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-openh264, ubuntu-restricted-addons]
+  - id: gpu-video
+    packages: [vainfo, mesa-va-drivers]
+  - id: typesetting-fonts
+    packages: [texlive-base, texlive-xetex, fonts-firacode]
+  - id: desktop-ui
+    packages: [gnome-tweaks, gnome-shell-extensions, gnome-shell-extension-manager]
+  - id: virtualization
+    packages: [qemu-kvm, libvirt-daemon-system, libvirt-clients, virtinst, bridge-utils, virt-manager]
+  - id: streaming-capture
+    packages: [v4l2loopback-dkms, v4l2loopback-utils]
+  - id: document-viewers
+    packages: [zathura, mupdf]
+  - id: vscode-prerequisites
+    packages: [wget, gpg, apt-transport-https]
+  - id: vscode
+    packages: [code]
+  - id: containers
+    packages: [podman, podman-docker, buildah, podman-toolbox]
+  - id: binary-prerequisites
+    packages: [curl, unzip, tar, xz-utils, ca-certificates]
+  - id: language-installer-prerequisites
+    packages: [curl, python3, build-essential, git, ca-certificates]
+  - id: flatpak-prerequisites
+    packages: [flatpak, gnome-software-plugin-flatpak]
+  - id: flatpak-minimal
+    packages: [flatpak]
+  - id: local-go-prerequisites
+    packages: [curl, tar]
+  - id: font-prerequisites
+    packages: [git, fontconfig]
+  - id: zsh-plugin-prerequisites
+    packages: [git]
+  - id: sdkman-prerequisites
+    packages: [curl, zip, unzip]
+  - id: user-config-prerequisites
+    packages: [git, tmux]
+  - id: current-machine
+    packages: [curl, 1password, zsh, git]

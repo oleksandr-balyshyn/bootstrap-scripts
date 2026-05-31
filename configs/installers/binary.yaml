@@ -1,0 +1,78 @@
+assets:
+  - id: upstream-binaries
+    root: ${HOME}/.local/share/uboot/apps
+    links: ${HOME}/.local/bin
+    tools:
+      - name: yazi
+        version: v26.5.6
+        url: https://github.com/sxyazi/yazi/releases/download/v26.5.6/yazi-x86_64-unknown-linux-gnu.zip
+        archive: zip
+        binaries: [yazi, ya]
+      - name: zig
+        version: 0.15.2
+        url: https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz
+        archive: tar.xz
+        binaries: [zig]
+      - name: minikube
+        version: latest
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        archive: none
+        binaries: [minikube]
+      - name: xplr
+        version: latest
+        url: https://github.com/sayanarijit/xplr/releases/latest/download/xplr-linux.tar.gz
+        archive: tar.gz
+        binaries: [xplr]
+      - name: kind
+        version: 0.31.0
+        url: https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+        archive: none
+        binaries: [kind]
+      - name: zellij
+        version: 0.44.1
+        url: https://github.com/zellij-org/zellij/releases/download/v0.44.1/zellij-x86_64-unknown-linux-musl.tar.gz
+        archive: tar.gz
+        binaries: [zellij]
+      - name: helm
+        version: latest
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        archive: helm-script
+        binaries: [helm]
+      - name: kubectl
+        version: stable
+        url: https://dl.k8s.io/release/stable.txt
+        archive: kubectl-stable
+        binaries: [kubectl]
+      - name: kustomize
+        version: latest
+        url: https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh
+        archive: kustomize-script
+        binaries: [kustomize]
+      - name: neovide
+        version: latest
+        url: https://github.com/neovide/neovide/releases/latest/download/neovide.AppImage
+        archive: none
+        binaries: [neovide]
+      - name: neovim
+        version: latest
+        url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+        archive: tar.gz
+        binaries: [nvim]
+        aliases: [neovim, vim]
+      - name: lazygit
+        version: 0.61.0
+        url: https://github.com/jesseduffield/lazygit/releases/download/v0.61.0/lazygit_0.61.0_Linux_x86_64.tar.gz
+        archive: tar.gz
+        binaries: [lazygit]
+        aliases: [lzg]
+      - name: jujutsu
+        version: 0.40.0
+        url: https://github.com/jj-vcs/jj/releases/download/v0.40.0/jj-v0.40.0-x86_64-unknown-linux-musl.tar.gz
+        archive: tar.gz
+        binaries: [jj]
+        aliases: [jj-scm, jujutsu]
+      - name: dotbot
+        version: 1.24.0
+        url: https://github.com/anishathalye/dotbot/releases/download/v1.24.0/dotbot-linux-x64.tar.gz
+        archive: tar.gz
+        binaries: [dotbot]

@@ -1,0 +1,112 @@
+assets:
+  - id: set-default-zsh
+    sudo: false
+    script: |
+      if [ "$SHELL" != "$(command -v zsh)" ]; then
+        chsh -s "$(command -v zsh)"
+      fi
+
+  - id: install-oh-my-zsh
+    script: |
+      if [ ! -d "$HOME/.oh-my-zsh" ]; then
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+      fi
+
+  - id: debian-cli-symlinks
+    sudo: true
+    script: |
+      if command -v batcat >/dev/null 2>&1 && [ ! -e /usr/local/bin/bat ]; then
+        ln -s "$(command -v batcat)" /usr/local/bin/bat
+      fi
+      if command -v fdfind >/dev/null 2>&1 && [ ! -e /usr/local/bin/fd ]; then
+        ln -s "$(command -v fdfind)" /usr/local/bin/fd
+      fi
+
+  - id: amd-gpu-tools
+    script: |
+      if lspci | grep -i amd | grep -i vga >/dev/null; then
+        sudo apt install -y radeontop
+      fi
+
+  - id: intel-gpu-tools
+    script: |
+      if lspci | grep -i intel | grep -i vga >/dev/null; then
+        sudo apt install -y intel-media-va-driver-non-free || sudo apt install -y intel-media-va-driver
+      fi
+
+  - id: add-user-libvirt
+    script: |
+      sudo usermod -aG libvirt "$USER"
+
+  - id: microsoft-apt-key
+    script: |
+      install -d -m 0755 "$HOME/.cache/uboot"
+      wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/packages.microsoft.gpg >/dev/null
+
+  - id: vscode-repository
+    sudo: true
+    script: |
+      install -d -m 0755 /etc/apt/keyrings
+      echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list
+
+  - id: language-installers
+    script: |
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      curl -s "https://get.sdkman.io" | bash
+      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+      curl https://pyenv.run | bash
+      curl -sSL https://install.python-poetry.org | python3 -
+      curl -sS https://starship.rs/install.sh | sh -s -- -y
+      curl -fsSL https://get.pnpm.io/install.sh | sh -
+      curl -fsSL https://install.julialang.org | sh -s -- -y
+      curl -sfS 'https://dotenvx.sh?directory=/home/worxbend/.local/bin' | sh
+      curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+      bash "Miniforge3-$(uname)-$(uname -m).sh" -b -p "$HOME/miniforge3"
+      rm -f "Miniforge3-$(uname)-$(uname -m).sh"
+      curl -LsSf https://astral.sh/uv/install.sh | sh
+      curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+  - id: enable-flathub
+    sudo: true
+    script: |
+      flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+  - id: local-go
+    script: |
+      install_root="${HOME}/.local/share/uboot/toolchains/go"
+      version="1.26.2"
+      target="${install_root}/${version}"
+      mkdir -p "$target" "${HOME}/.go-workspace"
+      curl -L -o "$target/go.tar.gz" "https://go.dev/dl/go${version}.linux-amd64.tar.gz"
+      tar -zxf "$target/go.tar.gz" -C "$target" --strip-components=1
+      rm -f "$target/go.tar.gz"
+      mkdir -p "${HOME}/.local/bin"
+      ln -sfn "$target/bin/go" "${HOME}/.local/bin/go"
+
+  - id: zsh-plugins
+    script: |
+      custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+      mkdir -p "$custom/plugins"
+      [ -d "$custom/plugins/zsh-syntax-highlighting" ] || git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$custom/plugins/zsh-syntax-highlighting"
+      [ -d "$custom/plugins/zsh-autosuggestions" ] || git clone https://github.com/zsh-users/zsh-autosuggestions "$custom/plugins/zsh-autosuggestions"
+      [ -d "$custom/plugins/zsh-history-substring-search" ] || git clone https://github.com/zsh-users/zsh-history-substring-search "$custom/plugins/zsh-history-substring-search"
+
+  - id: tmux-plugin-manager
+    script: |
+      if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
+        git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
+      fi
+
+  - id: git-user-config
+    script: |
+      git config --global user.email "balyszyn@gmail.com"
+      git config --global user.name "w0rxbend"
+      git config --global pull.rebase true
+      git config --global init.defaultBranch main
+      git config --global core.autocrlf input
+
+  - id: configure-time
+    sudo: true
+    script: |
+      timedatectl set-local-rtc 0
+      timedatectl set-ntp true
