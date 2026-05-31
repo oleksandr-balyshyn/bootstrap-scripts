@@ -1,0 +1,4 @@
+.git/
+.bootstrap/
+bin/
+go.sum

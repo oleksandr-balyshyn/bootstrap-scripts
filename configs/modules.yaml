@@ -370,6 +370,23 @@ modules:
         installer: shell
         asset: configure-time
 
+  - id: repo-tooling
+    title: Repository Tooling
+    description: Install formatters, linters, VS Code extensions, and Neovim LSP tools for this repo.
+    source: local repo tooling
+    tags: [development, editor, tooling]
+    depends_on: [local-go]
+    steps:
+      - name: Tooling apt packages
+        installer: apt
+        asset: repo-tooling-prerequisites
+      - name: Go, YAML, and Node formatter tools
+        installer: shell
+        asset: repo-tooling-tools
+      - name: VS Code extensions
+        installer: shell
+        asset: vscode-tooling-extensions
+
   - id: system-config
     title: System Configuration
     description: Enable network time and keep RTC in UTC.

@@ -43,6 +43,8 @@ This is used for cases where a selected module needs a provider created elsewher
 
 The dotfiles module installs Dotbot first, clones `w0rxbend/system-bootstrap`, removes excluded `.files` folders, then runs Dotbot with a generated config from `configs/installers/dotfiles.yaml`.
 
+The `repo-tooling` module installs the local developer workflow: `just`, `yamlfmt`, `yamllint`, `actionlint`, `gopls`, Prettier, `yaml-language-server`, ShellCheck/shfmt, VS Code extensions, and Neovim-compatible LSP tools.
+
 The installer file owns the entity list:
 
 ```yaml

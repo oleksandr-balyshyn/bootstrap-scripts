@@ -3,3 +3,28 @@ assets:
     packages:
       - name: ghostty
         classic: true
+      - name: spotify
+      - name: steam
+      - name: discord
+      - name: code
+        classic: true
+      - name: sublime-text
+        classic: true
+      - name: postman
+      - name: kubectl
+        classic: true
+      - name: fx
+      - name: opentofu
+        classic: true
+      - name: waveterm
+        classic: true
+      - name: kotlin
+        classic: true
+      - name: crystal
+        classic: true
+      - name: chromium
+      - name: brave
+      - name: mailspring
+      - name: slack
+      - name: alacritty
+        classic: true

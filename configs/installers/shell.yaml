@@ -83,6 +83,28 @@ assets:
       mkdir -p "${HOME}/.local/bin"
       ln -sfn "$target/bin/go" "${HOME}/.local/bin/go"
 
+  - id: repo-tooling-tools
+    script: |
+      go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+      go install github.com/rhysd/actionlint/cmd/actionlint@latest
+      go install golang.org/x/tools/gopls@latest
+      npm config set prefix "$HOME/.local"
+      npm install -g prettier prettier-plugin-sh yaml-language-server
+
+  - id: vscode-tooling-extensions
+    script: |
+      if command -v code >/dev/null 2>&1; then
+        code --install-extension editorconfig.editorconfig --force
+        code --install-extension golang.go --force
+        code --install-extension redhat.vscode-yaml --force
+        code --install-extension skellock.just --force
+        code --install-extension timonwong.shellcheck --force
+        code --install-extension esbenp.prettier-vscode --force
+        code --install-extension davidanson.vscode-markdownlint --force
+      else
+        echo "VS Code CLI 'code' is not available; skipping extension install."
+      fi
+
   - id: zsh-plugins
     script: |
       custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"

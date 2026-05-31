@@ -37,6 +37,18 @@ go build -o bin/uboot ./cmd/uboot
 
 If system Go is not installed yet, `bootstrap.sh` also knows how to use the managed local Go symlink at `~/.local/bin/go`. It also supports the temporary local compiler path used while this VM was first bootstrapped: `~/.local/opt/go1.26.2/bin/go`.
 
+## Tooling
+
+Use `just` as the repo entrypoint:
+
+```bash
+just fmt
+just check
+just build
+```
+
+The `repo-tooling` bootstrap module installs `just`, YAML tooling, shell tooling, Go LSP/tools, VS Code extensions, and Neovim LSP/formatter dependencies.
+
 ## Module Sources
 
 Fedora-derived Ubuntu package groups:

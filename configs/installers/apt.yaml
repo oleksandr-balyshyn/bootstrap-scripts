@@ -59,5 +59,7 @@ assets:
     packages: [curl, zip, unzip]
   - id: user-config-prerequisites
     packages: [git, tmux]
+  - id: repo-tooling-prerequisites
+    packages: [just, npm, yamllint, shellcheck, shfmt, golangci-lint]
   - id: current-machine
-    packages: [curl, 1password, zsh, git, snapd]
+    packages: [curl, 1password, zsh, git, snapd, golang-go, just, npm, yamllint, shellcheck, shfmt, golangci-lint, gdb, lldb, clang, python3-full, python3-pip, python3-pip-whl, pyenv, ca-certificates, wget, gnupg2, util-linux, fuse3, software-properties-common, apt-transport-https, pipewire, pipewire-alsa, pipewire-pulse, pipewire-jack, wireplumber, fzf, alacritty, kitty, bat, btop, fd-find, htop, wl-clipboard, yq, jq, net-tools, hyperfine, asciinema, gdu, fastfetch, ripgrep, unzip, stress, xsensors, fontconfig, pipx, libsecret-1-0, libsecret-1-dev, podman-toolbox, wev, network-manager, foot, tig, buildah, mtr, nmap, httpie, zoxide]

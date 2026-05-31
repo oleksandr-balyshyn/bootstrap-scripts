@@ -11,8 +11,8 @@ func TestLoadProjectCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCatalog() error = %v", err)
 	}
-	if len(catalog.Modules) != 30 {
-		t.Fatalf("loaded %d modules, want 30", len(catalog.Modules))
+	if len(catalog.Modules) != 31 {
+		t.Fatalf("loaded %d modules, want 31", len(catalog.Modules))
 	}
 
 	seen := map[string]bool{}

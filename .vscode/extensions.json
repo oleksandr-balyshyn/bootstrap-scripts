@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "editorconfig.editorconfig",
+    "golang.go",
+    "jnoortheen.nix-ide",
+    "redhat.vscode-yaml",
+    "skellock.just",
+    "timonwong.shellcheck",
+    "esbenp.prettier-vscode",
+    "davidanson.vscode-markdownlint"
+  ]
+}
