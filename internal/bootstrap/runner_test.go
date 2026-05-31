@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +17,18 @@ type recordingExecutor struct {
 
 func (e *recordingExecutor) Run(_ context.Context, command Command, _ io.Reader, _ io.Writer, _ io.Writer) error {
 	e.commands = append(e.commands, command)
+	return nil
+}
+
+type failingOnceExecutor struct {
+	commands []Command
+}
+
+func (e *failingOnceExecutor) Run(_ context.Context, command Command, _ io.Reader, _ io.Writer, _ io.Writer) error {
+	e.commands = append(e.commands, command)
+	if len(e.commands) == 1 {
+		return errors.New("boom")
+	}
 	return nil
 }
 
@@ -39,6 +52,44 @@ func TestRunnerUsesExecutor(t *testing.T) {
 	}
 	if executor.commands[0].Program != "echo" {
 		t.Fatalf("executor command = %#v", executor.commands[0])
+	}
+}
+
+func TestRunnerContinuesAfterCommandFailure(t *testing.T) {
+	var stderr bytes.Buffer
+	logDir := t.TempDir()
+	executor := &failingOnceExecutor{}
+	plan := Plan{Modules: []Module{{
+		ID:    "test",
+		Title: "Test",
+		Steps: []Step{
+			{Name: "Failing command", Commands: []Command{{Program: "false"}}},
+			{Name: "Next command", Commands: []Command{{Program: "echo", Args: []string{"ok"}}}},
+		},
+	}}}
+
+	runner := Runner{Executor: executor, LogDir: logDir, Stdout: io.Discard, Stderr: &stderr}
+	if err := runner.Run(context.Background(), plan); err != nil {
+		t.Fatalf("Runner.Run() error = %v", err)
+	}
+	if len(executor.commands) != 2 {
+		t.Fatalf("executor saw %d commands, want 2", len(executor.commands))
+	}
+	if !strings.Contains(stderr.String(), "Bootstrap completed with 1 failed command") {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+	entries, err := os.ReadDir(filepath.Join(logDir, "warnings"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundFailureLog := false
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "command-failed-") {
+			foundFailureLog = true
+		}
+	}
+	if !foundFailureLog {
+		t.Fatalf("warning logs = %#v, want command failure log", entries)
 	}
 }
 

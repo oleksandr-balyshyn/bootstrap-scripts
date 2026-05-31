@@ -660,7 +660,7 @@ func writeBinaryInstall(b *strings.Builder, tool binaryTool) error {
 	case "helm-script":
 		fmt.Fprintf(b, "curl -fsSL -o \"$stage/get_helm.sh\" %s\n", url)
 		fmt.Fprintln(b, `chmod +x "$stage/get_helm.sh"`)
-		fmt.Fprintln(b, `USE_SUDO=false HELM_INSTALL_DIR="$tool_dir" "$stage/get_helm.sh"`)
+		fmt.Fprintln(b, `PATH="$tool_dir:$PATH" USE_SUDO=false HELM_INSTALL_DIR="$tool_dir" "$stage/get_helm.sh"`)
 	case "kustomize-script":
 		fmt.Fprintf(b, "curl -fsSL -o \"$stage/install_kustomize.sh\" %s\n", url)
 		fmt.Fprintln(b, `chmod +x "$stage/install_kustomize.sh"`)

@@ -18,6 +18,13 @@ type Runner struct {
 	Executor Executor
 }
 
+type commandFailure struct {
+	ModuleID string
+	StepName string
+	Command  Command
+	Err      error
+}
+
 // Executor runs one compiled command. It is an interface so command execution
 // can be tested without invoking package managers or sudo.
 type Executor interface {
@@ -75,15 +82,28 @@ func (r Runner) Run(ctx context.Context, plan Plan) error {
 		}
 	}
 
+	failures := []commandFailure{}
 	for _, mod := range plan.Modules {
 		fmt.Fprintf(r.Stdout, "\n==> %s\n", mod.Title)
 		for _, step := range mod.Steps {
 			fmt.Fprintf(r.Stdout, " -> %s\n", step.Name)
 			for _, command := range step.Commands {
 				if err := r.runCommand(ctx, mod.ID, step.Name, command); err != nil {
-					return fmt.Errorf("%s: %s: %w", mod.ID, step.Name, err)
+					if ctx.Err() != nil {
+						return fmt.Errorf("%s: %s: %w", mod.ID, step.Name, err)
+					}
+					failure := commandFailure{ModuleID: mod.ID, StepName: step.Name, Command: command, Err: err}
+					failures = append(failures, failure)
+					r.logFailedCommand(failure)
 				}
 			}
+		}
+	}
+	if len(failures) > 0 {
+		if r.LogDir != "" {
+			fmt.Fprintf(r.Stderr, "\nBootstrap completed with %d failed command(s). See %s for details.\n", len(failures), filepath.Join(r.LogDir, "warnings"))
+		} else {
+			fmt.Fprintf(r.Stderr, "\nBootstrap completed with %d failed command(s).\n", len(failures))
 		}
 	}
 	fmt.Fprintln(r.Stdout, "\nBootstrap complete.")
@@ -121,6 +141,28 @@ func (r Runner) runCommand(ctx context.Context, moduleID, stepName string, comma
 		_, _ = fmt.Fprintf(logFile, "\nexit_error=%v\n", err)
 	}
 	return err
+}
+
+func (r Runner) logFailedCommand(failure commandFailure) {
+	message := fmt.Sprintf("%s: %s: command failed: %v", failure.ModuleID, failure.StepName, failure.Err)
+	fmt.Fprintf(r.Stderr, "    ! %s\n", message)
+	if r.LogDir == "" {
+		return
+	}
+
+	name := fmt.Sprintf("command-failed-%s-%d.log", safeName(failure.ModuleID+"-"+failure.StepName), time.Now().UnixNano())
+	path := filepath.Join(r.LogDir, "warnings", name)
+	body := fmt.Sprintf(
+		"warning=%s\nmodule=%s\nstep=%s\ncommand=%s\nerror=%v\n",
+		message,
+		failure.ModuleID,
+		failure.StepName,
+		failure.Command.String(),
+		failure.Err,
+	)
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		fmt.Fprintf(r.Stderr, "    ! failed to write warning log: %v\n", err)
+	}
 }
 
 func (r Runner) filterAPTInstall(ctx context.Context, command Command) (Command, error) {
