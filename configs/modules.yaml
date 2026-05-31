@@ -229,10 +229,10 @@ modules:
 
   - id: dotfiles
     title: Dotfiles
-    description: Clone system-bootstrap and run Dotbot against .files, excluding arch+hypr and opensuse.
-    source: .files/install.conf.yaml
+    description: Apply the vendored Ubuntu dotfiles with Dotbot.
+    source: dotfiles/install.conf.yaml
     tags: [dotfiles, configuration]
-    depends_on: [dotbot, language-installers, zsh-plugins]
+    depends_on: [dotbot]
     steps:
       - name: Dotfiles prerequisites
         installer: apt
@@ -312,8 +312,8 @@ modules:
 
   - id: nerd-fonts
     title: Nerd Fonts
-    description: Install the Nerd Font families listed in nerd-fonts.p0.sh.
-    source: scripts/nerd-fonts.p0.sh
+    description: Download selected Nerd Font release archives and install them locally.
+    source: configs/installers/fonts.yaml
     tags: [fonts, desktop]
     steps:
       - name: Font install prerequisites

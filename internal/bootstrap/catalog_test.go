@@ -257,6 +257,46 @@ func TestLoadCatalogRejectsOBSPluginsWithoutStudio(t *testing.T) {
 	}
 }
 
+func TestLoadCatalogBuildsLocalDotfilesCommand(t *testing.T) {
+	fsys := minimalConfigFS(`modules:
+  - id: dotfiles
+    title: Dotfiles
+    steps:
+      - name: Symlink dotfiles
+        installer: dotfiles
+        asset: local-dotfiles
+`)
+	fsys["installers/dotfiles.yaml"] = &fstest.MapFile{Data: []byte(`assets:
+  - id: local-dotfiles
+    local: ../dotfiles
+    links:
+      - target: ~/.zshrc
+        source: .zshrc
+`)}
+
+	catalog, err := LoadCatalogFS(fsys, ".")
+	if err != nil {
+		t.Fatalf("LoadCatalogFS() error = %v", err)
+	}
+
+	script := catalog.Modules[0].Steps[0].Commands[0].Args[1]
+	for _, want := range []string{
+		`source_dir="../dotfiles"`,
+		`prepare_dotfile_target "${HOME}/.zshrc"`,
+		`Remove it and replace with a symlink? [y/N]`,
+		`rm -rf -- "$target"`,
+		`"$dotbot" -d "$source_dir" -c "$config"`,
+		"~/.zshrc: .zshrc",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("local dotfiles script does not contain %q:\n%s", want, script)
+		}
+	}
+	if strings.Contains(script, "git clone") {
+		t.Fatalf("local dotfiles script unexpectedly clones repository:\n%s", script)
+	}
+}
+
 func minimalConfigFS(modules string) fstest.MapFS {
 	files := fstest.MapFS{
 		"modules.yaml":             {Data: []byte(modules)},

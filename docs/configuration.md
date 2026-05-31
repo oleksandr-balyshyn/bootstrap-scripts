@@ -41,7 +41,7 @@ modules:
 
 This is used for cases where a selected module needs a provider created elsewhere, such as Cargo packages needing Rust/Cargo bootstrap, SDKMAN packages needing SDKMAN bootstrap, Oh My Zsh plugins needing Oh My Zsh, and dotfiles needing Dotbot.
 
-The dotfiles module installs Dotbot first, clones `w0rxbend/system-bootstrap`, removes excluded `.files` folders, then runs Dotbot with a generated config from `configs/installers/dotfiles.yaml`.
+The dotfiles module installs Dotbot first, then applies the vendored `dotfiles/` tree with a generated config from `configs/installers/dotfiles.yaml`. The vendored tree comes from `w0rxbend/system-bootstrap/.files` with `arch+hypr` and `opensuse` omitted, so applying dotfiles no longer depends on cloning `system-bootstrap` at runtime.
 
 The `repo-tooling` module installs the local developer workflow: `just`, `yamlfmt`, `yamllint`, `actionlint`, `gopls`, Prettier, `yaml-language-server`, ShellCheck/shfmt, VS Code extensions, and Neovim-compatible LSP tools.
 
@@ -59,10 +59,10 @@ assets:
 - `snap`: snap package entries with `classic` and `channel` options.
 - `flatpak`: Flatpak refs grouped by remote.
 - `binary`: upstream binary downloads into a managed root, with symlinks into `~/.local/bin`.
-- `dotfiles`: Git-backed dotfile checkout plus generated Dotbot link config.
+- `dotfiles`: vendored local directory or Git-backed dotfile checkout plus generated Dotbot link config.
 - `cargo`: Rust CLI packages installed with `cargo-binstall` or another configured cargo installer.
 - `sdkman`: SDKMAN candidates.
-- `font`: Nerd Font family lists.
+- `font`: Nerd Font release archives downloaded by `uboot`.
 - `shell`: escape hatch for operations that are not yet worth modeling as a typed installer.
 
 ## Runtime Safety

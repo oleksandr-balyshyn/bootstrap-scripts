@@ -52,7 +52,7 @@ assets:
   - id: local-go-prerequisites
     packages: [curl, tar]
   - id: font-prerequisites
-    packages: [git, fontconfig]
+    packages: [ca-certificates, fontconfig]
   - id: zsh-plugin-prerequisites
     packages: [git]
   - id: sdkman-prerequisites

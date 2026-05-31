@@ -69,12 +69,16 @@ type stepConfig struct {
 
 // LoadCatalog reads modules.yaml and installer-specific asset files from dir.
 func LoadCatalog(dir string) (Catalog, error) {
-	return LoadCatalogFS(os.DirFS(dir), ".")
+	return loadCatalogFS(os.DirFS(dir), ".", dir)
 }
 
 // LoadCatalogFS is the testable variant of LoadCatalog.
 func LoadCatalogFS(fsys fs.FS, dir string) (Catalog, error) {
-	compiler, err := loadCompiler(fsys, filepath.Join(dir, "installers"))
+	return loadCatalogFS(fsys, dir, "")
+}
+
+func loadCatalogFS(fsys fs.FS, dir, localBase string) (Catalog, error) {
+	compiler, err := loadCompiler(fsys, filepath.Join(dir, "installers"), localBase)
 	if err != nil {
 		return Catalog{}, err
 	}
@@ -181,19 +185,20 @@ func detectDependencyCycles(catalog Catalog) error {
 }
 
 type compiler struct {
-	apt     map[string]aptAsset
-	snap    map[string]snapAsset
-	flatpak map[string]flatpakAsset
-	shell   map[string]shellAsset
-	cargo   map[string]cargoAsset
-	sdkman  map[string]sdkmanAsset
-	fonts   map[string]fontAsset
-	binary  map[string]binaryAsset
-	dotfile map[string]dotfilesAsset
+	apt       map[string]aptAsset
+	snap      map[string]snapAsset
+	flatpak   map[string]flatpakAsset
+	shell     map[string]shellAsset
+	cargo     map[string]cargoAsset
+	sdkman    map[string]sdkmanAsset
+	fonts     map[string]fontAsset
+	binary    map[string]binaryAsset
+	dotfile   map[string]dotfilesAsset
+	localBase string
 }
 
-func loadCompiler(fsys fs.FS, dir string) (compiler, error) {
-	c := compiler{}
+func loadCompiler(fsys fs.FS, dir, localBase string) (compiler, error) {
+	c := compiler{localBase: localBase}
 	loaders := []struct {
 		name string
 		load func() error
@@ -271,7 +276,7 @@ func (c compiler) compile(installer, id string) ([]Command, error) {
 		if !ok {
 			return nil, unknownAsset(installer, id)
 		}
-		return asset.commands()
+		return asset.commands(c.localBase)
 	default:
 		return nil, fmt.Errorf("unknown installer %q", installer)
 	}
@@ -431,24 +436,25 @@ func (a sdkmanAsset) commands() ([]Command, error) {
 type fontAsset struct {
 	ID         string   `yaml:"id"`
 	Repository string   `yaml:"repository"`
+	Release    string   `yaml:"release"`
 	Families   []string `yaml:"families"`
 }
 
 func (a fontAsset) commands() ([]Command, error) {
-	if a.Repository == "" || len(a.Families) == 0 {
-		return nil, fmt.Errorf("font asset %q requires repository and families", a.ID)
+	if len(a.Families) == 0 {
+		return nil, fmt.Errorf("font asset %q requires families", a.ID)
 	}
-	script := fmt.Sprintf(`FONT_DIR="${HOME}/.fonts"
-mkdir -p "$FONT_DIR"
-workdir="$(mktemp -d)"
-git clone --depth 1 --filter=blob:none %s "$workdir/nerd-fonts"
-cd "$workdir/nerd-fonts"
-for font in %s; do
-  ./install.sh -U "$font"
-done
-fc-cache -vf
-rm -rf "$workdir"`, shellWord(a.Repository), strings.Join(shellWords(a.Families), " "))
-	return shellCommand(script, false), nil
+	release := a.Release
+	if release == "" {
+		release = "latest"
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		executable = os.Args[0]
+	}
+	args := []string{"--install-nerd-fonts", "--nerd-font-release", release}
+	args = append(args, a.Families...)
+	return []Command{{Program: executable, Args: args}}, nil
 }
 
 type binaryAsset struct {
@@ -472,6 +478,7 @@ type dotfilesAsset struct {
 	Repository string        `yaml:"repository"`
 	Ref        string        `yaml:"ref"`
 	Checkout   string        `yaml:"checkout"`
+	Local      string        `yaml:"local"`
 	Dotbot     string        `yaml:"dotbot"`
 	Excludes   []string      `yaml:"excludes"`
 	Create     []string      `yaml:"create"`
@@ -484,9 +491,12 @@ type dotfileLink struct {
 	Source string `yaml:"source"`
 }
 
-func (a dotfilesAsset) commands() ([]Command, error) {
-	if a.Repository == "" || a.Checkout == "" || len(a.Links) == 0 {
-		return nil, fmt.Errorf("dotfiles asset %q requires repository, checkout, and links", a.ID)
+func (a dotfilesAsset) commands(localBase string) ([]Command, error) {
+	if a.Local == "" && (a.Repository == "" || a.Checkout == "") {
+		return nil, fmt.Errorf("dotfiles asset %q requires either local or repository and checkout", a.ID)
+	}
+	if len(a.Links) == 0 {
+		return nil, fmt.Errorf("dotfiles asset %q requires links", a.ID)
 	}
 	if a.Ref == "" {
 		a.Ref = "main"
@@ -494,15 +504,34 @@ func (a dotfilesAsset) commands() ([]Command, error) {
 	if a.Dotbot == "" {
 		a.Dotbot = "${HOME}/.local/bin/dotbot"
 	}
+	for _, link := range a.Links {
+		if link.Target == "" || link.Source == "" {
+			return nil, fmt.Errorf("dotfiles asset %q has incomplete link", a.ID)
+		}
+	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "repo_dir=%s\n", shellDouble(a.Checkout))
-	fmt.Fprintf(&b, "repo_url=%s\n", shellWord(a.Repository))
-	fmt.Fprintf(&b, "repo_ref=%s\n", shellWord(a.Ref))
 	fmt.Fprintf(&b, "dotbot=%s\n", shellDouble(a.Dotbot))
 	b.WriteString(`if [ ! -x "$dotbot" ]; then
   dotbot="${HOME}/.local/share/uboot/apps/dotbot/1.24.0/dotbot"
 fi
+`)
+	if a.Local != "" {
+		sourceDir := a.Local
+		if localBase != "" && !filepath.IsAbs(sourceDir) {
+			sourceDir = filepath.Join(localBase, sourceDir)
+		}
+		fmt.Fprintf(&b, "source_dir=%s\n", shellDouble(sourceDir))
+		b.WriteString(`if [ ! -d "$source_dir" ]; then
+  echo "dotfiles source directory does not exist: $source_dir" >&2
+  exit 1
+fi
+`)
+	} else {
+		fmt.Fprintf(&b, "repo_dir=%s\n", shellDouble(a.Checkout))
+		fmt.Fprintf(&b, "repo_url=%s\n", shellWord(a.Repository))
+		fmt.Fprintf(&b, "repo_ref=%s\n", shellWord(a.Ref))
+		b.WriteString(`source_dir="$repo_dir/.files"
 mkdir -p "$(dirname "$repo_dir")"
 if [ -d "$repo_dir/.git" ]; then
   git -C "$repo_dir" fetch --depth 1 origin "$repo_ref"
@@ -511,11 +540,39 @@ else
   git clone --depth 1 --branch "$repo_ref" "$repo_url" "$repo_dir"
 fi
 `)
-	for _, exclude := range a.Excludes {
-		fmt.Fprintf(&b, "rm -rf \"$repo_dir/.files/%s\"\n", escapeShellPathSegment(exclude))
+		for _, exclude := range a.Excludes {
+			fmt.Fprintf(&b, "rm -rf \"$source_dir/%s\"\n", escapeShellPathSegment(exclude))
+		}
 	}
 
-	b.WriteString(`config="$repo_dir/.files/uboot.install.conf.yaml"
+	b.WriteString(`prepare_dotfile_target() {
+  local target="$1"
+  if [ -e "$target" ] && [ ! -L "$target" ]; then
+    printf "Dotfile target %s already exists. Remove it and replace with a symlink? [y/N] " "$target" >&2
+    local answer
+    if ! read -r answer; then
+      echo "No input available; keeping existing target: $target" >&2
+      return 1
+    fi
+    case "$answer" in
+      y|Y|yes|YES)
+        rm -rf -- "$target"
+        ;;
+      *)
+        echo "Keeping existing target: $target" >&2
+        return 1
+        ;;
+    esac
+  fi
+}`)
+	b.WriteString("\n\n")
+	for _, link := range a.Links {
+		fmt.Fprintf(&b, "prepare_dotfile_target %s\n", shellDouble(expandHomePath(link.Target)))
+	}
+	b.WriteString("\n")
+
+	b.WriteString(`config="$(mktemp)"
+trap 'rm -f "$config"' EXIT
 cat > "$config" <<'DOTBOT_CONFIG'
 - defaults:
     link:
@@ -536,13 +593,10 @@ cat > "$config" <<'DOTBOT_CONFIG'
 	}
 	b.WriteString("- link:\n")
 	for _, link := range a.Links {
-		if link.Target == "" || link.Source == "" {
-			return nil, fmt.Errorf("dotfiles asset %q has incomplete link", a.ID)
-		}
 		fmt.Fprintf(&b, "    %s: %s\n", link.Target, link.Source)
 	}
 	b.WriteString("DOTBOT_CONFIG\n")
-	b.WriteString(`"$dotbot" -d "$repo_dir/.files" -c "$config"` + "\n")
+	b.WriteString(`"$dotbot" -d "$source_dir" -c "$config"` + "\n")
 	return shellCommand(b.String(), false), nil
 }
 
@@ -587,7 +641,9 @@ source_env_file_if_exists() {
   local file="$1"
   if [ -s "$file" ]; then
     # shellcheck disable=SC1090
+    set +u
     . "$file"
+    set -u
   fi
 }
 
@@ -743,6 +799,16 @@ func shellDouble(value string) string {
 	value = strings.ReplaceAll(value, `\`, `\\`)
 	value = strings.ReplaceAll(value, `"`, `\"`)
 	return `"` + value + `"`
+}
+
+func expandHomePath(value string) string {
+	if value == "~" {
+		return "${HOME}"
+	}
+	if strings.HasPrefix(value, "~/") {
+		return "${HOME}/" + strings.TrimPrefix(value, "~/")
+	}
+	return value
 }
 
 func escapeShellPathSegment(value string) string {

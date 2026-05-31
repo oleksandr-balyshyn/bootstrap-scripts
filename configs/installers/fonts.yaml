@@ -1,4 +1,4 @@
 assets:
   - id: nerd-fonts
-    repository: https://github.com/ryanoasis/nerd-fonts
+    release: latest
     families: [JetBrainsMono, MPlus, Terminus, FantasqueSansMono, Noto, Hack, HeavyData, "3270", FiraCode, LiberationMono, RobotoMono, Mononoki, Ubuntu, DroidSansMono, Monoid, SpaceMono, SourceCodePro, ComicShannsMono, NerdFontsSymbolsOnly, DaddyTimeMono, UbuntuMono, Meslo, FiraMono, CodeNewRoman, CascadiaCode, Hasklig, DejaVuSansMono, ZedMono, Inconsolata, Hermit, CommitMono, Agave, GeistMono, Monaspace, ShareTechMono, Recursive, D2Coding, EnvyCodeR, IosevkaTerm, Lekton, Lilex, VictorMono]

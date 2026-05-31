@@ -1,10 +1,7 @@
 assets:
   - id: system-bootstrap
-    repository: https://github.com/w0rxbend/system-bootstrap
-    ref: main
-    checkout: ${HOME}/.local/share/uboot/dotfiles/system-bootstrap
+    local: ../dotfiles
     dotbot: ${HOME}/.local/bin/dotbot
-    excludes: [arch+hypr, opensuse]
     create:
       - ~/Downloads
       - ~/.vim/undo-history
@@ -51,6 +48,6 @@ assets:
       - target: ~/.config/yazi
         source: .config/yazi
       - target: ~/system-update.sh
-        source: fedora/fedora-system-update.sh
+        source: ubuntu/ubuntu-system-update.sh
       - target: ~/.local/share/gnome-background-properties/gnome-background-properties.xml
-        source: fedora/gnome-background-properties.xml
+        source: ubuntu/gnome-background-properties.xml
