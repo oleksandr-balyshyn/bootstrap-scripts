@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -40,28 +42,36 @@ func TestRunnerUsesExecutor(t *testing.T) {
 	}
 }
 
-func TestRunnerRejectsMissingAptPackagesByDefault(t *testing.T) {
-	runner := Runner{Executor: &recordingExecutor{}, Stdout: io.Discard, Stderr: io.Discard}
-	_, err := runner.filterAPTInstall(context.Background(), Command{
+func TestRunnerSkipsMissingAptPackages(t *testing.T) {
+	var stderr bytes.Buffer
+	runner := Runner{Executor: &recordingExecutor{}, Stdout: io.Discard, Stderr: &stderr}
+	cmd, err := runner.filterAPTInstall(context.Background(), Command{
 		Program: "apt",
 		Args:    []string{"install", "-y", "uboot-package-that-should-not-exist"},
 		Sudo:    true,
 	})
-	if err == nil {
-		t.Fatal("filterAPTInstall() error = nil, want missing package error")
+	if err != nil {
+		t.Fatalf("filterAPTInstall() error = %v", err)
 	}
-	if !strings.Contains(err.Error(), "unavailable apt packages") {
-		t.Fatalf("filterAPTInstall() error = %q", err)
+	if cmd.Program != "" {
+		t.Fatalf("filterAPTInstall() command = %#v, want empty skipped command", cmd)
+	}
+	if !strings.Contains(stderr.String(), "skipping unavailable apt packages") {
+		t.Fatalf("stderr = %q", stderr.String())
 	}
 }
 
-func TestRunnerAllowsMissingAptPackagesWhenConfigured(t *testing.T) {
+func TestRunnerLogsMissingAptPackages(t *testing.T) {
 	var stderr bytes.Buffer
+	logDir := t.TempDir()
 	runner := Runner{
-		Executor:             &recordingExecutor{},
-		Stdout:               io.Discard,
-		Stderr:               &stderr,
-		AllowMissingPackages: true,
+		Executor: &recordingExecutor{},
+		LogDir:   logDir,
+		Stdout:   io.Discard,
+		Stderr:   &stderr,
+	}
+	if err := os.MkdirAll(filepath.Join(logDir, "warnings"), 0o755); err != nil {
+		t.Fatal(err)
 	}
 	cmd, err := runner.filterAPTInstall(context.Background(), Command{
 		Program: "apt",
@@ -76,5 +86,12 @@ func TestRunnerAllowsMissingAptPackagesWhenConfigured(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "skipping unavailable apt package") {
 		t.Fatalf("stderr = %q", stderr.String())
+	}
+	entries, err := os.ReadDir(filepath.Join(logDir, "warnings"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("warning log count = %d, want 1", len(entries))
 	}
 }

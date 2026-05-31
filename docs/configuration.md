@@ -65,7 +65,7 @@ assets:
 
 ## Runtime Safety
 
-APT package names are checked with `apt-cache show` before an install command runs. Missing packages fail the run by default. Use `--allow-missing-packages` only when you explicitly want best-effort installs.
+APT package names are checked with `apt-cache show` before an install command runs. Missing packages are reported, written to `.bootstrap/logs/warnings/`, skipped, and the rest of the install continues.
 
 Binary downloads install under `${HOME}/.local/share/uboot/apps/<tool>/<version>` and create symlinks under `${HOME}/.local/bin`. This avoids deleting user-managed directories from previous manual installs.
 

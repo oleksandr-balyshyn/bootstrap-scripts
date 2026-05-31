@@ -14,13 +14,12 @@ import (
 
 func main() {
 	var (
-		configDir            = flag.String("config", "configs", "directory containing modules.yaml and installer asset files")
-		dryRun               = flag.Bool("dry-run", false, "print commands without executing them")
-		all                  = flag.Bool("all", false, "select all modules without showing the TUI")
-		noTUI                = flag.Bool("no-tui", false, "run selected modules without the interactive TUI")
-		list                 = flag.Bool("list", false, "list available modules")
-		assumeYes            = flag.Bool("yes", false, "skip confirmation before executing selected modules")
-		allowMissingPackages = flag.Bool("allow-missing-packages", false, "skip apt packages unavailable in current repositories")
+		configDir = flag.String("config", "configs", "directory containing modules.yaml and installer asset files")
+		dryRun    = flag.Bool("dry-run", false, "print commands without executing them")
+		all       = flag.Bool("all", false, "select all modules without showing the TUI")
+		noTUI     = flag.Bool("no-tui", false, "run selected modules without the interactive TUI")
+		list      = flag.Bool("list", false, "list available modules")
+		assumeYes = flag.Bool("yes", false, "skip confirmation before executing selected modules")
 	)
 	flag.Parse()
 
@@ -89,10 +88,9 @@ func main() {
 
 	logDir := filepath.Join(".bootstrap", "logs")
 	runner := bootstrap.Runner{
-		LogDir:               logDir,
-		Stdout:               os.Stdout,
-		Stderr:               os.Stderr,
-		AllowMissingPackages: *allowMissingPackages,
+		LogDir: logDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
 	}
 	if err := runner.Run(context.Background(), plan); err != nil {
 		logger.Error("bootstrap failed", "error", err)

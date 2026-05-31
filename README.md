@@ -76,4 +76,4 @@ Dotfile management is a selectable `dotfiles` module. It installs Dotbot first, 
 
 Some Fedora packages do not have exact Ubuntu names, so the catalog uses Ubuntu equivalents where appropriate. Examples: `fd` becomes `fd-find`, `perf` becomes `linux-perf`, `wireshark-cli` becomes `tshark`, and GTK/WebKit development packages use Debian `-dev` names.
 
-Before executing an `apt install` command, the runner checks each package with `apt-cache show`. Unavailable package names fail the run by default; pass `--allow-missing-packages` for a best-effort run.
+Before executing an `apt install` command, the runner checks each package with `apt-cache show`. Unavailable package names are reported, logged under `.bootstrap/logs/warnings/`, skipped, and the rest of the install continues.

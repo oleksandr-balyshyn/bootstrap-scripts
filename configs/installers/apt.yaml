@@ -14,7 +14,7 @@ assets:
   - id: system-utilities
     packages: [unzip, stress, xsensors, fontconfig, pipx, libsecret-1-0, libsecret-1-dev, podman-toolbox, wev, network-manager, foot, tig, buildah, mtr, nmap, httpie, ripgrep, zoxide]
   - id: build-tools
-    packages: [build-essential, gcc, g++, clang, clangd, clang-format, clang-tools, clang-tidy, llvm, llvm-dev, compiler-rt, lld, lldb, make, cmake, meson, ninja-build, ccache, flex, bison, gperf, libreadline-dev, libffi-dev, libssl-dev, openssl, dfu-util, golang-go]
+    packages: [build-essential, gcc, g++, clang, clangd, clang-format, clang-tools, clang-tidy, llvm, llvm-dev, libclang-rt-dev, lld, lldb, make, cmake, meson, ninja-build, ccache, flex, bison, gperf, libreadline-dev, libffi-dev, libssl-dev, openssl, dfu-util, golang-go]
   - id: debug-profiling
     packages: [gdb, valgrind, strace, ltrace, linux-perf, tshark, protobuf-compiler]
   - id: dev-libraries

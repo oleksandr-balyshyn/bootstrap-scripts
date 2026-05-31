@@ -12,11 +12,10 @@ import (
 )
 
 type Runner struct {
-	LogDir               string
-	Stdout               io.Writer
-	Stderr               io.Writer
-	Executor             Executor
-	AllowMissingPackages bool
+	LogDir   string
+	Stdout   io.Writer
+	Stderr   io.Writer
+	Executor Executor
 }
 
 // Executor runs one compiled command. It is an interface so command execution
@@ -54,6 +53,9 @@ func (r Runner) Run(ctx context.Context, plan Plan) error {
 	}
 	if r.LogDir != "" {
 		if err := os.MkdirAll(r.LogDir, 0o755); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Join(r.LogDir, "warnings"), 0o755); err != nil {
 			return err
 		}
 	}
@@ -131,11 +133,8 @@ func (r Runner) filterAPTInstall(ctx context.Context, command Command) (Command,
 		}
 		available = append(available, pkg)
 	}
-	if len(missing) > 0 && !r.AllowMissingPackages {
-		return Command{}, fmt.Errorf("unavailable apt packages: %s", strings.Join(missing, ", "))
-	}
-	for _, pkg := range missing {
-		fmt.Fprintf(r.Stderr, "    ! skipping unavailable apt package: %s\n", pkg)
+	if len(missing) > 0 {
+		r.logSkippedPackages(command, missing)
 	}
 	if len(available) == 0 {
 		return Command{}, nil
@@ -143,6 +142,21 @@ func (r Runner) filterAPTInstall(ctx context.Context, command Command) (Command,
 
 	command.Args = append([]string{"install"}, append(prefix, available...)...)
 	return command, nil
+}
+
+func (r Runner) logSkippedPackages(command Command, packages []string) {
+	message := fmt.Sprintf("skipping unavailable apt packages: %s", strings.Join(packages, ", "))
+	fmt.Fprintf(r.Stderr, "    ! %s\n", message)
+	if r.LogDir == "" {
+		return
+	}
+
+	name := fmt.Sprintf("apt-missing-%d.log", time.Now().UnixNano())
+	path := filepath.Join(r.LogDir, "warnings", name)
+	body := fmt.Sprintf("warning=%s\ncommand=%s\npackages=%s\n", message, command.String(), strings.Join(packages, "\n"))
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		fmt.Fprintf(r.Stderr, "    ! failed to write warning log: %v\n", err)
+	}
 }
 
 func safeName(s string) string {
