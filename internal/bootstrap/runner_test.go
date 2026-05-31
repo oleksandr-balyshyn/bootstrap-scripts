@@ -43,6 +43,12 @@ func TestRunnerUsesExecutor(t *testing.T) {
 }
 
 func TestRunnerSkipsMissingAptPackages(t *testing.T) {
+	original := aptPackageInstallable
+	aptPackageInstallable = func(_ context.Context, pkg string) bool {
+		return pkg != "uboot-package-that-should-not-exist"
+	}
+	t.Cleanup(func() { aptPackageInstallable = original })
+
 	var stderr bytes.Buffer
 	runner := Runner{Executor: &recordingExecutor{}, Stdout: io.Discard, Stderr: &stderr}
 	cmd, err := runner.filterAPTInstall(context.Background(), Command{
@@ -61,7 +67,34 @@ func TestRunnerSkipsMissingAptPackages(t *testing.T) {
 	}
 }
 
+func TestRunnerKeepsAptPackagesWithInstallCandidate(t *testing.T) {
+	original := aptPackageInstallable
+	aptPackageInstallable = func(_ context.Context, pkg string) bool {
+		return pkg == "qemu-system-x86"
+	}
+	t.Cleanup(func() { aptPackageInstallable = original })
+
+	runner := Runner{Executor: &recordingExecutor{}, Stdout: io.Discard, Stderr: io.Discard}
+	cmd, err := runner.filterAPTInstall(context.Background(), Command{
+		Program: "apt",
+		Args:    []string{"install", "-y", "qemu-system-x86", "qemu-kvm"},
+		Sudo:    true,
+	})
+	if err != nil {
+		t.Fatalf("filterAPTInstall() error = %v", err)
+	}
+	if got := cmd.String(); got != "sudo apt install -y qemu-system-x86" {
+		t.Fatalf("filterAPTInstall() command = %q", got)
+	}
+}
+
 func TestRunnerLogsMissingAptPackages(t *testing.T) {
+	original := aptPackageInstallable
+	aptPackageInstallable = func(_ context.Context, pkg string) bool {
+		return pkg != "uboot-package-that-should-not-exist"
+	}
+	t.Cleanup(func() { aptPackageInstallable = original })
+
 	var stderr bytes.Buffer
 	logDir := t.TempDir()
 	runner := Runner{

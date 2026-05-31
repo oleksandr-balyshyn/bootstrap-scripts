@@ -28,7 +28,7 @@ assets:
   - id: desktop-ui
     packages: [gnome-tweaks, gnome-shell-extensions, gnome-shell-extension-manager]
   - id: virtualization
-    packages: [qemu-kvm, libvirt-daemon-system, libvirt-clients, virtinst, bridge-utils, virt-manager]
+    packages: [qemu-system-x86, qemu-utils, libvirt-daemon-system, libvirt-clients, virtinst, bridge-utils, virt-manager]
   - id: streaming-capture
     packages: [v4l2loopback-dkms, v4l2loopback-utils]
   - id: document-viewers

@@ -41,6 +41,21 @@ func (OSExecutor) Run(ctx context.Context, command Command, stdin io.Reader, std
 	return cmd.Run()
 }
 
+var aptPackageInstallable = func(ctx context.Context, pkg string) bool {
+	output, err := exec.CommandContext(ctx, "apt-cache", "policy", pkg).Output()
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(output), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "Candidate:") {
+			candidate := strings.TrimSpace(strings.TrimPrefix(line, "Candidate:"))
+			return candidate != "" && candidate != "(none)"
+		}
+	}
+	return false
+}
+
 func (r Runner) Run(ctx context.Context, plan Plan) error {
 	if r.Stdout == nil {
 		r.Stdout = os.Stdout
@@ -126,8 +141,7 @@ func (r Runner) filterAPTInstall(ctx context.Context, command Command) (Command,
 	available := make([]string, 0, len(packages))
 	missing := make([]string, 0)
 	for _, pkg := range packages {
-		check := exec.CommandContext(ctx, "apt-cache", "show", pkg)
-		if err := check.Run(); err != nil {
+		if !aptPackageInstallable(ctx, pkg) {
 			missing = append(missing, pkg)
 			continue
 		}
