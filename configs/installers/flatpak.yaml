@@ -71,7 +71,6 @@ assets:
       - com.obsproject.Studio.Plugin.OBSPWVideo
       - com.obsproject.Studio.Plugin.AitumMultistream
       - com.obsproject.Studio.Plugin.SceneSwitcher
-      - com.obsproject.Studio.Plugin.WaylandHotkeys
       - com.obsproject.Studio.Plugin.CompositeBlur
       - com.obsproject.Studio.Plugin.AdvancedMasks
       - com.obsproject.Studio.Plugin._3DEffect
