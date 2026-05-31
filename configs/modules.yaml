@@ -232,6 +232,7 @@ modules:
     description: Install Rust CLI packages listed in cargo-packages.sh with cargo-binstall.
     source: scripts/cargo-packages.sh
     tags: [rust, cli]
+    depends_on: [language-installers]
     steps:
       - name: Install cargo packages
         installer: cargo
@@ -300,6 +301,7 @@ modules:
     description: Install zsh-syntax-highlighting, zsh-autosuggestions, and zsh-history-substring-search.
     source: scripts/oh-my-zsh-plugins.sh
     tags: [shell]
+    depends_on: [shell]
     steps:
       - name: Plugin prerequisites
         installer: apt
@@ -313,6 +315,7 @@ modules:
     description: Install SDKMAN and Java, Gradle, Maven, sbt, Scala, Micronaut, Vert.x, and VisualVM.
     source: scripts/sdkman-packages.sh
     tags: [jvm, development]
+    depends_on: [language-installers]
     steps:
       - name: SDKMAN prerequisites
         installer: apt

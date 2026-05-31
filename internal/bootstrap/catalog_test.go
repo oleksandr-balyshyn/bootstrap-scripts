@@ -121,6 +121,76 @@ func TestLoadCatalogRejectsUnsupportedBinaryArchive(t *testing.T) {
 	}
 }
 
+func TestLoadCatalogRejectsUnknownModuleDependency(t *testing.T) {
+	fsys := minimalConfigFS(`modules:
+  - id: child
+    title: Child
+    depends_on: [missing-parent]
+    steps:
+      - name: Install packages
+        installer: apt
+        asset: base
+`)
+
+	_, err := LoadCatalogFS(fsys, ".")
+	if err == nil {
+		t.Fatal("LoadCatalogFS() error = nil, want dependency error")
+	}
+	if !strings.Contains(err.Error(), `module "child" depends on unknown module "missing-parent"`) {
+		t.Fatalf("LoadCatalogFS() error = %q", err)
+	}
+}
+
+func TestLoadCatalogRejectsModuleDependencyCycle(t *testing.T) {
+	fsys := minimalConfigFS(`modules:
+  - id: one
+    title: One
+    depends_on: [two]
+    steps:
+      - name: Install packages
+        installer: apt
+        asset: base
+  - id: two
+    title: Two
+    depends_on: [one]
+    steps:
+      - name: Install packages
+        installer: apt
+        asset: base
+`)
+
+	_, err := LoadCatalogFS(fsys, ".")
+	if err == nil {
+		t.Fatal("LoadCatalogFS() error = nil, want cycle error")
+	}
+	if !strings.Contains(err.Error(), "dependency cycle detected") {
+		t.Fatalf("LoadCatalogFS() error = %q", err)
+	}
+}
+
+func TestLoadCatalogRejectsOBSPluginsWithoutStudio(t *testing.T) {
+	fsys := minimalConfigFS(`modules:
+  - id: obs
+    title: OBS
+    steps:
+      - name: Install plugin
+        installer: flatpak
+        asset: obs-plugin-only
+`)
+	fsys["installers/flatpak.yaml"] = &fstest.MapFile{Data: []byte(`assets:
+  - id: obs-plugin-only
+    refs: [com.obsproject.Studio.Plugin.DroidCam]
+`)}
+
+	_, err := LoadCatalogFS(fsys, ".")
+	if err == nil {
+		t.Fatal("LoadCatalogFS() error = nil, want OBS plugin dependency error")
+	}
+	if !strings.Contains(err.Error(), "installs OBS plugins without com.obsproject.Studio") {
+		t.Fatalf("LoadCatalogFS() error = %q", err)
+	}
+}
+
 func minimalConfigFS(modules string) fstest.MapFS {
 	files := fstest.MapFS{
 		"modules.yaml":            {Data: []byte(modules)},

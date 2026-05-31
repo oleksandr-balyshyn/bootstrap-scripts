@@ -31,6 +31,16 @@ modules:
         asset: terminal-cli
 ```
 
+Modules can depend on other modules. Dependencies are automatically added to the execution plan and preserve `modules.yaml` order:
+
+```yaml
+modules:
+  - id: cargo-packages
+    depends_on: [language-installers]
+```
+
+This is used for cases where a selected module needs a provider created elsewhere, such as Cargo packages needing Rust/Cargo bootstrap, SDKMAN packages needing SDKMAN bootstrap, and Oh My Zsh plugins needing Oh My Zsh.
+
 The installer file owns the entity list:
 
 ```yaml
@@ -55,5 +65,7 @@ assets:
 APT package names are checked with `apt-cache show` before an install command runs. Missing packages fail the run by default. Use `--allow-missing-packages` only when you explicitly want best-effort installs.
 
 Binary downloads install under `${HOME}/.local/share/uboot/apps/<tool>/<version>` and create symlinks under `${HOME}/.local/bin`. This avoids deleting user-managed directories from previous manual installs.
+
+The catalog loader validates module dependencies, rejects dependency cycles, and catches known asset-level dependency problems such as OBS plugin Flatpaks without `com.obsproject.Studio`.
 
 Remote script installers still exist in `shell.yaml` because the upstream bootstrap scripts use them. Treat those assets as high-trust actions. Prefer converting repeated patterns into typed installers with pinned versions and checksums over time.

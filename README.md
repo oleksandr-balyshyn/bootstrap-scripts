@@ -62,12 +62,15 @@ Local VM history is preserved as `current-machine`:
 
 ```bash
 sudo apt install -y curl 1password zsh git
+sudo apt install -y snapd
 sudo snap install ghostty --classic
 ```
 
 ## Notes
 
 The install catalog is configured in `configs/`; see [docs/configuration.md](docs/configuration.md). Go code in `internal/bootstrap` loads, validates, and compiles those installer assets into executable plans. The runner logs command output under `.bootstrap/logs/` when executing.
+
+Module dependencies are declared with `depends_on` in `configs/modules.yaml` and are automatically included in plans. For example, selecting `cargo-packages` adds `language-installers` first, and selecting `zsh-plugins` adds `shell`.
 
 Some Fedora packages do not have exact Ubuntu names, so the catalog uses Ubuntu equivalents where appropriate. Examples: `fd` becomes `fd-find`, `perf` becomes `linux-perf`, `wireshark-cli` becomes `tshark`, and GTK/WebKit development packages use Debian `-dev` names.
 

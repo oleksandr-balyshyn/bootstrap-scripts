@@ -58,4 +58,4 @@ assets:
   - id: user-config-prerequisites
     packages: [git, tmux]
   - id: current-machine
-    packages: [curl, 1password, zsh, git]
+    packages: [curl, 1password, zsh, git, snapd]

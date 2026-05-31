@@ -148,6 +148,9 @@ func (m model) detailView() string {
 	b.WriteString(mod.Description + "\n\n")
 	b.WriteString(tagStyle.Render("source: "+mod.Source) + "\n")
 	b.WriteString(tagStyle.Render("tags: "+strings.Join(mod.Tags, ", ")) + "\n")
+	if len(mod.DependsOn) > 0 {
+		b.WriteString(tagStyle.Render("depends: "+strings.Join(mod.DependsOn, ", ")) + "\n")
+	}
 	if m.dryRun {
 		b.WriteString(selectedStyle.Render("mode: dry-run") + "\n\n")
 	} else {

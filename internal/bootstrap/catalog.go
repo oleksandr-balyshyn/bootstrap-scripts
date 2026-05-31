@@ -29,6 +29,7 @@ type Module struct {
 	Source      string
 	Tags        []string
 	Default     bool
+	DependsOn   []string
 	Steps       []Step
 }
 
@@ -56,6 +57,7 @@ type moduleConfig struct {
 	Source      string       `yaml:"source"`
 	Tags        []string     `yaml:"tags"`
 	Default     bool         `yaml:"default"`
+	DependsOn   []string     `yaml:"depends_on"`
 	Steps       []stepConfig `yaml:"steps"`
 }
 
@@ -103,6 +105,7 @@ func LoadCatalogFS(fsys fs.FS, dir string) (Catalog, error) {
 			Source:      cfg.Source,
 			Tags:        cfg.Tags,
 			Default:     cfg.Default,
+			DependsOn:   cfg.DependsOn,
 			Steps:       make([]Step, 0, len(cfg.Steps)),
 		}
 		for _, step := range cfg.Steps {
@@ -114,7 +117,67 @@ func LoadCatalogFS(fsys fs.FS, dir string) (Catalog, error) {
 		}
 		catalog.Modules = append(catalog.Modules, module)
 	}
+	if err := validateModuleDependencies(catalog); err != nil {
+		return Catalog{}, err
+	}
 	return catalog, nil
+}
+
+func validateModuleDependencies(catalog Catalog) error {
+	known := make(map[string]bool, len(catalog.Modules))
+	for _, module := range catalog.Modules {
+		known[module.ID] = true
+	}
+	for _, module := range catalog.Modules {
+		for _, dep := range module.DependsOn {
+			if !known[dep] {
+				return fmt.Errorf("module %q depends on unknown module %q", module.ID, dep)
+			}
+		}
+	}
+	return detectDependencyCycles(catalog)
+}
+
+func detectDependencyCycles(catalog Catalog) error {
+	modules := make(map[string]Module, len(catalog.Modules))
+	for _, module := range catalog.Modules {
+		modules[module.ID] = module
+	}
+
+	const (
+		unvisited = 0
+		visiting  = 1
+		visited   = 2
+	)
+
+	state := map[string]int{}
+	var visit func(id string, stack []string) error
+	visit = func(id string, stack []string) error {
+		switch state[id] {
+		case visiting:
+			return fmt.Errorf("dependency cycle detected: %s -> %s", strings.Join(stack, " -> "), id)
+		case visited:
+			return nil
+		}
+
+		state[id] = visiting
+		for _, dep := range modules[id].DependsOn {
+			if err := visit(dep, append(stack, id)); err != nil {
+				return err
+			}
+		}
+		state[id] = visited
+		return nil
+	}
+
+	for _, module := range catalog.Modules {
+		if state[module.ID] == unvisited {
+			if err := visit(module.ID, nil); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 type compiler struct {
@@ -278,11 +341,31 @@ func (a flatpakAsset) commands() ([]Command, error) {
 	if len(a.Refs) == 0 {
 		return nil, fmt.Errorf("flatpak asset %q has no refs", a.ID)
 	}
+	if err := validateFlatpakRefs(a); err != nil {
+		return nil, err
+	}
 	commands := make([]Command, 0, len(a.Refs))
 	for _, ref := range a.Refs {
 		commands = append(commands, Command{Program: "flatpak", Args: []string{"install", a.Remote, ref, "-y"}})
 	}
 	return commands, nil
+}
+
+func validateFlatpakRefs(a flatpakAsset) error {
+	hasOBS := false
+	hasOBSPlugin := false
+	for _, ref := range a.Refs {
+		if ref == "com.obsproject.Studio" {
+			hasOBS = true
+		}
+		if strings.HasPrefix(ref, "com.obsproject.Studio.Plugin.") {
+			hasOBSPlugin = true
+		}
+	}
+	if hasOBSPlugin && !hasOBS {
+		return fmt.Errorf("flatpak asset %q installs OBS plugins without com.obsproject.Studio", a.ID)
+	}
+	return nil
 }
 
 type shellAsset struct {
@@ -327,7 +410,9 @@ func (a sdkmanAsset) commands() ([]Command, error) {
 		return nil, fmt.Errorf("sdkman asset %q has no packages", a.ID)
 	}
 	var b strings.Builder
-	b.WriteString(`curl -s "https://get.sdkman.io" | bash` + "\n")
+	b.WriteString(`if [ ! -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then` + "\n")
+	b.WriteString(`  curl -s "https://get.sdkman.io" | bash` + "\n")
+	b.WriteString("fi\n")
 	b.WriteString(`. "$HOME/.sdkman/bin/sdkman-init.sh"` + "\n")
 	for _, pkg := range a.Packages {
 		fmt.Fprintf(&b, "sdk install %s || true\n", shellWord(pkg))
