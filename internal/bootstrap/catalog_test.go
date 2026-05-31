@@ -92,6 +92,72 @@ func TestLoadCatalogBuildsTypedCommands(t *testing.T) {
 	}
 }
 
+func TestShellCommandsRefreshBootstrapEnvironment(t *testing.T) {
+	fsys := minimalConfigFS(`modules:
+  - id: shell-module
+    title: Shell Module
+    steps:
+      - name: Run shell
+        installer: shell
+        asset: custom
+      - name: Run cargo
+        installer: cargo
+        asset: rust-tools
+      - name: Run sdkman
+        installer: sdkman
+        asset: jvm-tools
+`)
+	fsys["installers/shell.yaml"] = &fstest.MapFile{Data: []byte(`assets:
+  - id: custom
+    script: echo ready
+`)}
+	fsys["installers/cargo.yaml"] = &fstest.MapFile{Data: []byte(`assets:
+  - id: rust-tools
+    packages: [cargo-nextest]
+`)}
+	fsys["installers/sdkman.yaml"] = &fstest.MapFile{Data: []byte(`assets:
+  - id: jvm-tools
+    packages: [java]
+`)}
+
+	catalog, err := LoadCatalogFS(fsys, ".")
+	if err != nil {
+		t.Fatalf("LoadCatalogFS() error = %v", err)
+	}
+
+	for _, step := range catalog.Modules[0].Steps {
+		command := step.Commands[0]
+		if command.Program != "bash" {
+			t.Fatalf("%s command program = %q, want bash", step.Name, command.Program)
+		}
+		script := command.Args[1]
+		for _, want := range []string{
+			`source_shell_file_if_exists "$HOME/.bashrc"`,
+			"merge_zsh_path",
+			`source_env_file_if_exists "$HOME/.cargo/env"`,
+			`source_env_file_if_exists "$HOME/.sdkman/bin/sdkman-init.sh"`,
+			"source_bootstrap_env",
+		} {
+			if !strings.Contains(script, want) {
+				t.Fatalf("%s script does not contain %q:\n%s", step.Name, want, script)
+			}
+		}
+	}
+
+	cargoScript := catalog.Modules[0].Steps[1].Commands[0].Args[1]
+	if !strings.Contains(cargoScript, "require_command 'cargo-binstall'") {
+		t.Fatalf("cargo script does not require cargo-binstall:\n%s", cargoScript)
+	}
+
+	sdkmanScript := catalog.Modules[0].Steps[2].Commands[0].Args[1]
+	if !strings.Contains(sdkmanScript, `curl -s "https://get.sdkman.io" | bash`) {
+		t.Fatalf("sdkman script does not install sdkman when missing:\n%s", sdkmanScript)
+	}
+	if !strings.Contains(sdkmanScript, "require_command sdk") {
+		t.Fatalf("sdkman script does not require sdk after sourcing environment:\n%s", sdkmanScript)
+	}
+}
+
 func TestLoadCatalogRejectsUnsupportedBinaryArchive(t *testing.T) {
 	fsys := minimalConfigFS(`modules:
   - id: broken-binary

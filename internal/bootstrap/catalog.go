@@ -386,8 +386,7 @@ func (a shellAsset) commands() ([]Command, error) {
 	if strings.TrimSpace(a.Script) == "" {
 		return nil, fmt.Errorf("shell asset %q has empty script", a.ID)
 	}
-	script := "set -euo pipefail\n" + a.Script
-	return []Command{{Program: "bash", Args: []string{"-lc", script}, Sudo: a.Sudo}}, nil
+	return shellCommand(a.Script, a.Sudo), nil
 }
 
 type cargoAsset struct {
@@ -404,8 +403,8 @@ func (a cargoAsset) commands() ([]Command, error) {
 	if installer == "" {
 		installer = "cargo-binstall"
 	}
-	script := fmt.Sprintf(". \"$HOME/.cargo/env\"\n%s -y %s", installer, strings.Join(a.Packages, " "))
-	return []Command{{Program: "bash", Args: []string{"-lc", "set -euo pipefail\n" + script}}}, nil
+	script := fmt.Sprintf("require_command %s\n%s -y %s", shellWord(installer), installer, strings.Join(a.Packages, " "))
+	return shellCommand(script, false), nil
 }
 
 type sdkmanAsset struct {
@@ -421,11 +420,12 @@ func (a sdkmanAsset) commands() ([]Command, error) {
 	b.WriteString(`if [ ! -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then` + "\n")
 	b.WriteString(`  curl -s "https://get.sdkman.io" | bash` + "\n")
 	b.WriteString("fi\n")
-	b.WriteString(`. "$HOME/.sdkman/bin/sdkman-init.sh"` + "\n")
+	b.WriteString("source_bootstrap_env\n")
+	b.WriteString("require_command sdk\n")
 	for _, pkg := range a.Packages {
 		fmt.Fprintf(&b, "sdk install %s || true\n", shellWord(pkg))
 	}
-	return []Command{{Program: "bash", Args: []string{"-lc", "set -euo pipefail\n" + b.String()}}}, nil
+	return shellCommand(b.String(), false), nil
 }
 
 type fontAsset struct {
@@ -448,7 +448,7 @@ for font in %s; do
 done
 fc-cache -vf
 rm -rf "$workdir"`, shellWord(a.Repository), strings.Join(shellWords(a.Families), " "))
-	return []Command{{Program: "bash", Args: []string{"-lc", "set -euo pipefail\n" + script}}}, nil
+	return shellCommand(script, false), nil
 }
 
 type binaryAsset struct {
@@ -543,7 +543,7 @@ cat > "$config" <<'DOTBOT_CONFIG'
 	}
 	b.WriteString("DOTBOT_CONFIG\n")
 	b.WriteString(`"$dotbot" -d "$repo_dir/.files" -c "$config"` + "\n")
-	return []Command{{Program: "bash", Args: []string{"-lc", "set -euo pipefail\n" + b.String()}}}, nil
+	return shellCommand(b.String(), false), nil
 }
 
 func (a binaryAsset) commands() ([]Command, error) {
@@ -563,7 +563,79 @@ func (a binaryAsset) commands() ([]Command, error) {
 			return nil, fmt.Errorf("binary asset %q tool %q: %w", a.ID, tool.Name, err)
 		}
 	}
-	return []Command{{Program: "bash", Args: []string{"-lc", "set -euo pipefail\n" + b.String()}}}, nil
+	return shellCommand(b.String(), false), nil
+}
+
+func shellCommand(script string, sudo bool) []Command {
+	return []Command{{Program: "bash", Args: []string{"-lc", bootstrapShellPrelude() + script}, Sudo: sudo}}
+}
+
+func bootstrapShellPrelude() string {
+	return `set -euo pipefail
+
+source_shell_file_if_exists() {
+  local file="$1"
+  if [ -s "$file" ]; then
+    set +u
+    # shellcheck disable=SC1090
+    . "$file" >/dev/null 2>&1 || true
+    set -u
+  fi
+}
+
+source_env_file_if_exists() {
+  local file="$1"
+  if [ -s "$file" ]; then
+    # shellcheck disable=SC1090
+    . "$file"
+  fi
+}
+
+prepend_path() {
+  local dir="$1"
+  if [ -d "$dir" ]; then
+    case ":$PATH:" in
+      *":$dir:"*) ;;
+      *) PATH="$dir:$PATH" ;;
+    esac
+  fi
+}
+
+merge_zsh_path() {
+  if command -v zsh >/dev/null 2>&1 && [ -s "$HOME/.zshrc" ]; then
+    local zsh_path
+    zsh_path="$(zsh -lc 'print -r -- "$PATH"' 2>/dev/null || true)"
+    if [ -n "$zsh_path" ]; then
+      PATH="$zsh_path:$PATH"
+    fi
+  fi
+}
+
+source_bootstrap_env() {
+  source_shell_file_if_exists "$HOME/.profile"
+  source_shell_file_if_exists "$HOME/.bash_profile"
+  source_shell_file_if_exists "$HOME/.bashrc"
+  merge_zsh_path
+  prepend_path "$HOME/.local/bin"
+  prepend_path "$HOME/go/bin"
+  prepend_path "$HOME/.go/bin"
+  prepend_path "$HOME/.cargo/bin"
+  prepend_path "$HOME/.local/share/uboot/toolchains/go/1.26.2/bin"
+  prepend_path "$HOME/.local/share/uboot/apps/dotbot/1.24.0"
+  source_env_file_if_exists "$HOME/.cargo/env"
+  source_env_file_if_exists "$HOME/.sdkman/bin/sdkman-init.sh"
+  export PATH
+}
+
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "required command not available after sourcing bootstrap environment: $1" >&2
+    return 127
+  fi
+}
+
+source_bootstrap_env
+`
 }
 
 func writeBinaryInstall(b *strings.Builder, tool binaryTool) error {
