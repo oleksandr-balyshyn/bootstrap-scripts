@@ -10,6 +10,15 @@ type Plan struct {
 	Modules []Module
 }
 
+func ValidateCatalog(catalog Catalog) error {
+	selected := make(map[string]bool, len(catalog.Modules))
+	for _, mod := range catalog.Modules {
+		selected[mod.ID] = true
+	}
+	_, err := BuildPlan(catalog, selected)
+	return err
+}
+
 func BuildPlan(catalog Catalog, selected map[string]bool) (Plan, error) {
 	known := make(map[string]Module, len(catalog.Modules))
 	for _, mod := range catalog.Modules {

@@ -7,11 +7,13 @@ assets:
         version: v26.5.6
         url: https://github.com/sxyazi/yazi/releases/download/v26.5.6/yazi-x86_64-unknown-linux-gnu.zip
         archive: zip
+        sha256: 1c9096f0a83b8102c194385f644cdeff93cc8269426163c9d033041ebd537bd2
         binaries: [yazi, ya]
       - name: zig
         version: 0.15.2
         url: https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz
         archive: tar.xz
+        sha256: 02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239
         binaries: [zig]
       - name: minikube
         version: latest
@@ -27,11 +29,13 @@ assets:
         version: 0.31.0
         url: https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
         archive: none
+        sha256: eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa
         binaries: [kind]
       - name: zellij
         version: 0.44.1
         url: https://github.com/zellij-org/zellij/releases/download/v0.44.1/zellij-x86_64-unknown-linux-musl.tar.gz
         archive: tar.gz
+        sha256: 669825021d529fca5d939888263c9d2a90762145191fa07581a15250e8af2b49
         binaries: [zellij]
       - name: helm
         version: latest
@@ -63,12 +67,14 @@ assets:
         version: 0.61.0
         url: https://github.com/jesseduffield/lazygit/releases/download/v0.61.0/lazygit_0.61.0_Linux_x86_64.tar.gz
         archive: tar.gz
+        sha256: 4a9702b346283a23a6919c9424617e14788ac00e9cd3c9be266bac48cc6de8eb
         binaries: [lazygit]
         aliases: [lzg]
       - name: jujutsu
         version: 0.40.0
         url: https://github.com/jj-vcs/jj/releases/download/v0.40.0/jj-v0.40.0-x86_64-unknown-linux-musl.tar.gz
         archive: tar.gz
+        sha256: 5c8979f46873e052f59bdd9535636dca6e6f9f70571b73f6d63c3b92acfaa037
         binaries: [jj]
         aliases: [jj-scm, jujutsu]
   - id: dotbot
@@ -79,4 +85,5 @@ assets:
         version: 1.24.0
         url: https://github.com/anishathalye/dotbot/releases/download/v1.24.0/dotbot-linux-x64.tar.gz
         archive: tar.gz
+        sha256: 3fe8ac1be58c782724749178e96dbbcd6dc9f8e3b548efa35c1c781063b446b6
         binaries: [dotbot]

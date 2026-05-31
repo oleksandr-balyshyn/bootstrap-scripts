@@ -32,6 +32,12 @@ func (e *failingOnceExecutor) Run(_ context.Context, command Command, _ io.Reade
 	return nil
 }
 
+type packageCheckerFunc func(context.Context, string) bool
+
+func (f packageCheckerFunc) Installable(ctx context.Context, pkg string) bool {
+	return f(ctx, pkg)
+}
+
 func TestRunnerUsesExecutor(t *testing.T) {
 	executor := &recordingExecutor{}
 	plan := Plan{Modules: []Module{{
@@ -55,7 +61,7 @@ func TestRunnerUsesExecutor(t *testing.T) {
 	}
 }
 
-func TestRunnerContinuesAfterCommandFailure(t *testing.T) {
+func TestRunnerStopsAfterCommandFailureByDefault(t *testing.T) {
 	var stderr bytes.Buffer
 	logDir := t.TempDir()
 	executor := &failingOnceExecutor{}
@@ -69,13 +75,13 @@ func TestRunnerContinuesAfterCommandFailure(t *testing.T) {
 	}}}
 
 	runner := Runner{Executor: executor, LogDir: logDir, Stdout: io.Discard, Stderr: &stderr}
-	if err := runner.Run(context.Background(), plan); err != nil {
-		t.Fatalf("Runner.Run() error = %v", err)
+	if err := runner.Run(context.Background(), plan); err == nil {
+		t.Fatal("Runner.Run() error = nil, want command failure")
 	}
-	if len(executor.commands) != 2 {
-		t.Fatalf("executor saw %d commands, want 2", len(executor.commands))
+	if len(executor.commands) != 1 {
+		t.Fatalf("executor saw %d commands, want 1", len(executor.commands))
 	}
-	if !strings.Contains(stderr.String(), "Bootstrap completed with 1 failed command") {
+	if !strings.Contains(stderr.String(), "command failed") {
 		t.Fatalf("stderr = %q", stderr.String())
 	}
 	entries, err := os.ReadDir(filepath.Join(logDir, "warnings"))
@@ -93,15 +99,37 @@ func TestRunnerContinuesAfterCommandFailure(t *testing.T) {
 	}
 }
 
-func TestRunnerSkipsMissingAptPackages(t *testing.T) {
-	original := aptPackageInstallable
-	aptPackageInstallable = func(_ context.Context, pkg string) bool {
-		return pkg != "uboot-package-that-should-not-exist"
+func TestRunnerKeepGoingContinuesAfterCommandFailure(t *testing.T) {
+	var stderr bytes.Buffer
+	executor := &failingOnceExecutor{}
+	plan := Plan{Modules: []Module{{
+		ID:    "test",
+		Title: "Test",
+		Steps: []Step{
+			{Name: "Failing command", Commands: []Command{{Program: "false"}}},
+			{Name: "Next command", Commands: []Command{{Program: "echo", Args: []string{"ok"}}}},
+		},
+	}}}
+
+	runner := Runner{Executor: executor, KeepGoing: true, Stdout: io.Discard, Stderr: &stderr}
+	if err := runner.Run(context.Background(), plan); err == nil {
+		t.Fatal("Runner.Run() error = nil, want command failure")
 	}
-	t.Cleanup(func() { aptPackageInstallable = original })
+	if len(executor.commands) != 2 {
+		t.Fatalf("executor saw %d commands, want 2", len(executor.commands))
+	}
+	if !strings.Contains(stderr.String(), "Bootstrap completed with 1 failed command") {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+}
+
+func TestRunnerSkipsMissingAptPackages(t *testing.T) {
+	checker := packageCheckerFunc(func(_ context.Context, pkg string) bool {
+		return pkg != "uboot-package-that-should-not-exist"
+	})
 
 	var stderr bytes.Buffer
-	runner := Runner{Executor: &recordingExecutor{}, Stdout: io.Discard, Stderr: &stderr}
+	runner := Runner{Executor: &recordingExecutor{}, PackageChecker: checker, Stdout: io.Discard, Stderr: &stderr}
 	cmd, err := runner.filterAPTInstall(context.Background(), Command{
 		Program: "apt",
 		Args:    []string{"install", "-y", "uboot-package-that-should-not-exist"},
@@ -119,13 +147,11 @@ func TestRunnerSkipsMissingAptPackages(t *testing.T) {
 }
 
 func TestRunnerKeepsAptPackagesWithInstallCandidate(t *testing.T) {
-	original := aptPackageInstallable
-	aptPackageInstallable = func(_ context.Context, pkg string) bool {
+	checker := packageCheckerFunc(func(_ context.Context, pkg string) bool {
 		return pkg == "qemu-system-x86"
-	}
-	t.Cleanup(func() { aptPackageInstallable = original })
+	})
 
-	runner := Runner{Executor: &recordingExecutor{}, Stdout: io.Discard, Stderr: io.Discard}
+	runner := Runner{Executor: &recordingExecutor{}, PackageChecker: checker, Stdout: io.Discard, Stderr: io.Discard}
 	cmd, err := runner.filterAPTInstall(context.Background(), Command{
 		Program: "apt",
 		Args:    []string{"install", "-y", "qemu-system-x86", "qemu-kvm"},
@@ -140,19 +166,18 @@ func TestRunnerKeepsAptPackagesWithInstallCandidate(t *testing.T) {
 }
 
 func TestRunnerLogsMissingAptPackages(t *testing.T) {
-	original := aptPackageInstallable
-	aptPackageInstallable = func(_ context.Context, pkg string) bool {
+	checker := packageCheckerFunc(func(_ context.Context, pkg string) bool {
 		return pkg != "uboot-package-that-should-not-exist"
-	}
-	t.Cleanup(func() { aptPackageInstallable = original })
+	})
 
 	var stderr bytes.Buffer
 	logDir := t.TempDir()
 	runner := Runner{
-		Executor: &recordingExecutor{},
-		LogDir:   logDir,
-		Stdout:   io.Discard,
-		Stderr:   &stderr,
+		Executor:       &recordingExecutor{},
+		PackageChecker: checker,
+		LogDir:         logDir,
+		Stdout:         io.Discard,
+		Stderr:         &stderr,
 	}
 	if err := os.MkdirAll(filepath.Join(logDir, "warnings"), 0o755); err != nil {
 		t.Fatal(err)

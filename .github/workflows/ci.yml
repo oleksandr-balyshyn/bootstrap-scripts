@@ -5,12 +5,15 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
         with:
           go-version-file: go.mod
       - run: sudo apt update && sudo apt install -y just npm yamllint shellcheck shfmt
@@ -24,6 +27,9 @@ jobs:
       - run: yamllint .
       - run: go vet ./...
       - run: go test ./...
+      - uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee  # v1.0.4
       - run: actionlint
       - run: go build -o bin/uboot ./cmd/uboot
       - run: ./bin/uboot --list
+      - run: ./bin/uboot --config ./configs --validate
+      - run: ./bin/uboot --config ./configs --all --dry-run

@@ -10,6 +10,16 @@ func TestBuildPlanRejectsUnknownSelection(t *testing.T) {
 	}
 }
 
+func TestValidateCatalogBuildsAllModules(t *testing.T) {
+	catalog := Catalog{Modules: []Module{
+		{ID: "parent", Title: "Parent"},
+		{ID: "child", Title: "Child", DependsOn: []string{"parent"}},
+	}}
+	if err := ValidateCatalog(catalog); err != nil {
+		t.Fatalf("ValidateCatalog() error = %v", err)
+	}
+}
+
 func TestBuildPlanExpandsDependenciesInCatalogOrder(t *testing.T) {
 	catalog := Catalog{Modules: []Module{
 		{ID: "language-installers", Title: "Language Installers"},

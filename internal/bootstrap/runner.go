@@ -12,10 +12,12 @@ import (
 )
 
 type Runner struct {
-	LogDir   string
-	Stdout   io.Writer
-	Stderr   io.Writer
-	Executor Executor
+	LogDir         string
+	Stdout         io.Writer
+	Stderr         io.Writer
+	Executor       Executor
+	PackageChecker PackageChecker
+	KeepGoing      bool
 }
 
 type commandFailure struct {
@@ -23,6 +25,18 @@ type commandFailure struct {
 	StepName string
 	Command  Command
 	Err      error
+}
+
+type RunError struct {
+	Failures []commandFailure
+}
+
+func (e RunError) Error() string {
+	if len(e.Failures) == 1 {
+		failure := e.Failures[0]
+		return fmt.Sprintf("bootstrap failed: %s: %s: %v", failure.ModuleID, failure.StepName, failure.Err)
+	}
+	return fmt.Sprintf("bootstrap failed: %d command(s) failed", len(e.Failures))
 }
 
 // Executor runs one compiled command. It is an interface so command execution
@@ -48,7 +62,13 @@ func (OSExecutor) Run(ctx context.Context, command Command, stdin io.Reader, std
 	return cmd.Run()
 }
 
-var aptPackageInstallable = func(ctx context.Context, pkg string) bool {
+type PackageChecker interface {
+	Installable(ctx context.Context, pkg string) bool
+}
+
+type APTPackageChecker struct{}
+
+func (APTPackageChecker) Installable(ctx context.Context, pkg string) bool {
 	output, err := exec.CommandContext(ctx, "apt-cache", "policy", pkg).Output()
 	if err != nil {
 		return false
@@ -73,6 +93,9 @@ func (r Runner) Run(ctx context.Context, plan Plan) error {
 	if r.Executor == nil {
 		r.Executor = OSExecutor{}
 	}
+	if r.PackageChecker == nil {
+		r.PackageChecker = APTPackageChecker{}
+	}
 	if r.LogDir != "" {
 		if err := os.MkdirAll(r.LogDir, 0o755); err != nil {
 			return err
@@ -95,6 +118,9 @@ func (r Runner) Run(ctx context.Context, plan Plan) error {
 					failure := commandFailure{ModuleID: mod.ID, StepName: step.Name, Command: command, Err: err}
 					failures = append(failures, failure)
 					r.logFailedCommand(failure)
+					if !r.KeepGoing {
+						return RunError{Failures: failures}
+					}
 				}
 			}
 		}
@@ -105,6 +131,7 @@ func (r Runner) Run(ctx context.Context, plan Plan) error {
 		} else {
 			fmt.Fprintf(r.Stderr, "\nBootstrap completed with %d failed command(s).\n", len(failures))
 		}
+		return RunError{Failures: failures}
 	}
 	fmt.Fprintln(r.Stdout, "\nBootstrap complete.")
 	return nil
@@ -183,7 +210,7 @@ func (r Runner) filterAPTInstall(ctx context.Context, command Command) (Command,
 	available := make([]string, 0, len(packages))
 	missing := make([]string, 0)
 	for _, pkg := range packages {
-		if !aptPackageInstallable(ctx, pkg) {
+		if !r.PackageChecker.Installable(ctx, pkg) {
 			missing = append(missing, pkg)
 			continue
 		}

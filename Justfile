@@ -18,6 +18,7 @@ check:
     yamllint .
     {{ go_bin }} vet ./...
     {{ go_bin }} test ./...
+    {{ go_bin }} run ./cmd/uboot --config ./configs --validate
     actionlint
 
 build:

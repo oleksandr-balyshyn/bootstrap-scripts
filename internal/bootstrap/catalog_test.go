@@ -142,6 +142,9 @@ func TestShellCommandsRefreshBootstrapEnvironment(t *testing.T) {
 				t.Fatalf("%s script does not contain %q:\n%s", step.Name, want, script)
 			}
 		}
+		if strings.Contains(script, "verify_sha256") {
+			t.Fatalf("%s script unexpectedly contains binary checksum helper:\n%s", step.Name, script)
+		}
 	}
 
 	cargoScript := catalog.Modules[0].Steps[1].Commands[0].Args[1]
@@ -183,6 +186,72 @@ func TestLoadCatalogRejectsUnsupportedBinaryArchive(t *testing.T) {
 		t.Fatal("LoadCatalogFS() error = nil, want unsupported archive error")
 	}
 	if !strings.Contains(err.Error(), `unsupported archive type "rar"`) {
+		t.Fatalf("LoadCatalogFS() error = %q", err)
+	}
+}
+
+func TestLoadCatalogBuildsBinaryChecksumCommand(t *testing.T) {
+	fsys := minimalConfigFS(`modules:
+  - id: binary
+    title: Binary
+    steps:
+      - name: Install binary
+        installer: binary
+        asset: tools
+`)
+	fsys["installers/binary.yaml"] = &fstest.MapFile{Data: []byte(`assets:
+  - id: tools
+    root: ${HOME}/.local/share/uboot/apps
+    tools:
+      - name: sample
+        version: "1"
+        url: https://example.test/sample.tar.gz
+        archive: tar.gz
+        sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        binaries: [sample]
+`)}
+
+	catalog, err := LoadCatalogFS(fsys, ".")
+	if err != nil {
+		t.Fatalf("LoadCatalogFS() error = %v", err)
+	}
+	script := catalog.Modules[0].Steps[0].Commands[0].Args[1]
+	for _, want := range []string{
+		"verify_sha256()",
+		`verify_sha256 "$stage/archive.tar.gz" '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("binary script does not contain %q:\n%s", want, script)
+		}
+	}
+}
+
+func TestLoadCatalogRejectsInvalidBinaryChecksum(t *testing.T) {
+	fsys := minimalConfigFS(`modules:
+  - id: binary
+    title: Binary
+    steps:
+      - name: Install binary
+        installer: binary
+        asset: tools
+`)
+	fsys["installers/binary.yaml"] = &fstest.MapFile{Data: []byte(`assets:
+  - id: tools
+    root: ${HOME}/.local/share/uboot/apps
+    tools:
+      - name: sample
+        version: "1"
+        url: https://example.test/sample.tar.gz
+        archive: tar.gz
+        sha256: not-a-checksum
+        binaries: [sample]
+`)}
+
+	_, err := LoadCatalogFS(fsys, ".")
+	if err == nil {
+		t.Fatal("LoadCatalogFS() error = nil, want invalid checksum error")
+	}
+	if !strings.Contains(err.Error(), "sha256 must be 64 lowercase hex characters") {
 		t.Fatalf("LoadCatalogFS() error = %q", err)
 	}
 }

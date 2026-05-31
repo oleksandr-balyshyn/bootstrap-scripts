@@ -23,9 +23,11 @@ Useful non-interactive commands:
 
 ```bash
 ./bin/uboot --list
+./bin/uboot --validate
 ./bin/uboot --dry-run --no-tui system-update shell terminal-cli
 ./bin/uboot --all --dry-run
 ./bin/uboot --all --yes
+./bin/uboot --all --yes --keep-going
 ./bin/uboot --config ./configs --list
 ```
 
@@ -89,3 +91,5 @@ Dotfile management is a selectable `dotfiles` module. It installs Dotbot first, 
 Some Fedora packages do not have exact Ubuntu names, so the catalog uses Ubuntu equivalents where appropriate. Examples: `fd` becomes `fd-find`, `perf` becomes `linux-perf`, `wireshark-cli` becomes `tshark`, and GTK/WebKit development packages use Debian `-dev` names.
 
 Before executing an `apt install` command, the runner checks each package with `apt-cache show`. Unavailable package names are reported, logged under `.bootstrap/logs/warnings/`, skipped, and the rest of the install continues.
+
+Command failures stop execution by default and return a non-zero exit status. Use `--keep-going` to continue through remaining commands while still returning a failure at the end if any command failed.

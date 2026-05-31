@@ -53,6 +53,12 @@ assets:
     packages: [alacritty, kitty, ripgrep]
 ```
 
+Validate catalog structure and command generation before running installs:
+
+```bash
+./bin/uboot --config ./configs --validate
+```
+
 ## Installer Types
 
 - `apt`: package groups plus `update` and `upgrade` actions.
@@ -70,6 +76,20 @@ assets:
 APT package names are checked with `apt-cache show` before an install command runs. Missing packages are reported, written to `.bootstrap/logs/warnings/`, skipped, and the rest of the install continues.
 
 Binary downloads install under `${HOME}/.local/share/uboot/apps/<tool>/<version>` and create symlinks under `${HOME}/.local/bin`. This avoids deleting user-managed directories from previous manual installs.
+
+Binary tools can include an optional lowercase hex `sha256` field. When present, the generated install script verifies the downloaded file before extracting or executing it:
+
+```yaml
+tools:
+  - name: example
+    version: "1.0.0"
+    url: https://example.test/example-linux-amd64.tar.gz
+    archive: tar.gz
+    sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    binaries: [example]
+```
+
+Runtime command failures stop the bootstrap run by default. `--keep-going` continues through the rest of the selected plan but still returns a non-zero exit status if any command failed.
 
 The catalog loader validates module dependencies, rejects dependency cycles, and catches known asset-level dependency problems such as OBS plugin Flatpaks without `com.obsproject.Studio`.
 
