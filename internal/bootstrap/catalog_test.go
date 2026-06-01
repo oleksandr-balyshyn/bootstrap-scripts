@@ -161,6 +161,37 @@ func TestShellCommandsRefreshBootstrapEnvironment(t *testing.T) {
 	}
 }
 
+func TestProjectLanguageInstallersAreIdempotent(t *testing.T) {
+	catalog, err := LoadCatalog("../../configs")
+	if err != nil {
+		t.Fatalf("LoadCatalog() error = %v", err)
+	}
+
+	var script string
+	for _, module := range catalog.Modules {
+		if module.ID != "language-installers" {
+			continue
+		}
+		for _, step := range module.Steps {
+			if step.Name == "Run language installers" {
+				script = step.Commands[0].Args[1]
+			}
+		}
+	}
+	if script == "" {
+		t.Fatal("language-installers run step was not found")
+	}
+
+	for _, want := range []string{
+		`if [ ! -d "$HOME/.pyenv" ]; then`,
+		`if [ ! -x "$HOME/miniforge3/bin/conda" ]; then`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("language installer script does not contain %q:\n%s", want, script)
+		}
+	}
+}
+
 func TestLoadCatalogRejectsUnsupportedBinaryArchive(t *testing.T) {
 	fsys := minimalConfigFS(`modules:
   - id: broken-binary

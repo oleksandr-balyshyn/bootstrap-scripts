@@ -54,15 +54,19 @@ assets:
       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       curl -s "https://get.sdkman.io" | bash
       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
-      curl https://pyenv.run | bash
+      if [ ! -d "$HOME/.pyenv" ]; then
+        curl https://pyenv.run | bash
+      fi
       curl -sSL https://install.python-poetry.org | python3 -
       curl -sS https://starship.rs/install.sh | sh -s -- -y
       curl -fsSL https://get.pnpm.io/install.sh | sh -
       curl -fsSL https://install.julialang.org | sh -s -- -y
       curl -sfS 'https://dotenvx.sh?directory=/home/worxbend/.local/bin' | sh
-      curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-      bash "Miniforge3-$(uname)-$(uname -m).sh" -b -p "$HOME/miniforge3"
-      rm -f "Miniforge3-$(uname)-$(uname -m).sh"
+      if [ ! -x "$HOME/miniforge3/bin/conda" ]; then
+        curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+        bash "Miniforge3-$(uname)-$(uname -m).sh" -b -p "$HOME/miniforge3"
+        rm -f "Miniforge3-$(uname)-$(uname -m).sh"
+      fi
       curl -LsSf https://astral.sh/uv/install.sh | sh
       curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
