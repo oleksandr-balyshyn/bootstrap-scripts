@@ -18,6 +18,11 @@ type Runner struct {
 	Executor       Executor
 	PackageChecker PackageChecker
 	KeepGoing      bool
+	// State, when set, records completed commands and is consulted to skip
+	// work that already finished on a previous run.
+	State *State
+	// Now returns the current time; overridable in tests. Defaults to time.Now.
+	Now func() time.Time
 }
 
 type commandFailure struct {
@@ -96,6 +101,9 @@ func (r Runner) Run(ctx context.Context, plan Plan) error {
 	if r.PackageChecker == nil {
 		r.PackageChecker = APTPackageChecker{}
 	}
+	if r.Now == nil {
+		r.Now = time.Now
+	}
 	if r.LogDir != "" {
 		if err := os.MkdirAll(r.LogDir, 0o755); err != nil {
 			return err
@@ -106,24 +114,45 @@ func (r Runner) Run(ctx context.Context, plan Plan) error {
 	}
 
 	failures := []commandFailure{}
+	skipped := 0
 	for _, mod := range plan.Modules {
 		fmt.Fprintf(r.Stdout, "\n==> %s\n", mod.Title)
 		for _, step := range mod.Steps {
 			fmt.Fprintf(r.Stdout, " -> %s\n", step.Name)
 			for _, command := range step.Commands {
-				if err := r.runCommand(ctx, mod.ID, step.Name, command); err != nil {
+				key := commandKey(mod.ID, step.Name, command)
+				if !command.SkipState && r.State.Done(key) {
+					fmt.Fprintf(r.Stdout, "    ✓ already applied, skipping: %s\n", command.String())
+					skipped++
+					continue
+				}
+
+				ran, err := r.runCommand(ctx, mod.ID, step.Name, command)
+				if err != nil {
 					if ctx.Err() != nil {
 						return fmt.Errorf("%s: %s: %w", mod.ID, step.Name, err)
 					}
 					failure := commandFailure{ModuleID: mod.ID, StepName: step.Name, Command: command, Err: err}
 					failures = append(failures, failure)
 					r.logFailedCommand(failure)
-					if !r.KeepGoing {
-						return RunError{Failures: failures}
+					// Per-command best-effort failures (e.g. one apt package)
+					// and --keep-going both continue; a failed command is left
+					// unrecorded so it is retried on the next run.
+					if command.ContinueOnError || r.KeepGoing {
+						continue
+					}
+					return RunError{Failures: failures}
+				}
+				if ran && !command.SkipState {
+					if err := r.State.MarkDone(key, mod.ID, step.Name, command, r.Now()); err != nil {
+						return fmt.Errorf("record state for %s: %s: %w", mod.ID, step.Name, err)
 					}
 				}
 			}
 		}
+	}
+	if skipped > 0 {
+		fmt.Fprintf(r.Stdout, "\nSkipped %d command(s) already completed in a previous run.\n", skipped)
 	}
 	if len(failures) > 0 {
 		if r.LogDir != "" {
@@ -137,13 +166,17 @@ func (r Runner) Run(ctx context.Context, plan Plan) error {
 	return nil
 }
 
-func (r Runner) runCommand(ctx context.Context, moduleID, stepName string, command Command) error {
+// runCommand executes a single command. It reports whether the command was
+// actually run: a command filtered down to nothing (e.g. an apt install whose
+// only package is unavailable) reports ran=false so it is not recorded as
+// completed and is reconsidered on the next run.
+func (r Runner) runCommand(ctx context.Context, moduleID, stepName string, command Command) (bool, error) {
 	command, err := r.filterAPTInstall(ctx, command)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if command.Program == "" {
-		return nil
+		return false, nil
 	}
 
 	fmt.Fprintf(r.Stdout, "    $ %s\n", command.String())
@@ -155,7 +188,7 @@ func (r Runner) runCommand(ctx context.Context, moduleID, stepName string, comma
 		name := fmt.Sprintf("%s-%d.log", safeName(moduleID+"-"+stepName), time.Now().UnixNano())
 		file, err := os.Create(filepath.Join(r.LogDir, name))
 		if err != nil {
-			return err
+			return false, err
 		}
 		defer file.Close()
 		logFile = file
@@ -167,7 +200,7 @@ func (r Runner) runCommand(ctx context.Context, moduleID, stepName string, comma
 	if logFile != nil {
 		_, _ = fmt.Fprintf(logFile, "\nexit_error=%v\n", err)
 	}
-	return err
+	return true, err
 }
 
 func (r Runner) logFailedCommand(failure commandFailure) {

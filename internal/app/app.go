@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -32,7 +33,7 @@ func Run(ctx context.Context, args []string, streams Streams) int {
 
 	flags := flag.NewFlagSet("uboot", flag.ContinueOnError)
 	flags.SetOutput(streams.Stderr)
-	configDir := flags.String("config", "configs", "directory containing modules.yaml and installer asset files")
+	configDir := flags.String("config", "configs", "directory containing profile.yaml, modules.yaml, and installer asset files")
 	dryRun := flags.Bool("dry-run", false, "print commands without executing them")
 	all := flags.Bool("all", false, "select all modules without showing the TUI")
 	noTUI := flags.Bool("no-tui", false, "run selected modules without the interactive TUI")
@@ -40,25 +41,41 @@ func Run(ctx context.Context, args []string, streams Streams) int {
 	validate := flags.Bool("validate", false, "validate the catalog and all module plans without running commands")
 	assumeYes := flags.Bool("yes", false, "skip confirmation before executing selected modules")
 	keepGoing := flags.Bool("keep-going", false, "continue running remaining commands after a command fails")
-	fontsMode := flags.Bool("install-nerd-fonts", false, "install Nerd Font release archives")
-	fontRelease := flags.String("nerd-font-release", "latest", "Nerd Fonts release tag or latest")
+	statePath := flags.String("state", "", "resume state file path (default from profile policy)")
+	resetState := flags.Bool("reset-state", false, "discard saved resume state before running")
+	skipOSCheck := flags.Bool("skip-os-check", false, "skip the Ubuntu-only host check")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
+	setFlags := map[string]bool{}
+	flags.Visit(func(f *flag.Flag) { setFlags[f.Name] = true })
 
 	logger := slog.New(slog.NewTextHandler(streams.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	if *fontsMode {
-		if err := bootstrap.InstallNerdFonts(ctx, *fontRelease, flags.Args(), streams.Stdout, streams.Stderr); err != nil {
-			logger.Error("install nerd fonts", "error", err)
-			return 1
-		}
-		return 0
-	}
 
 	catalog, err := bootstrap.LoadCatalog(*configDir)
 	if err != nil {
 		logger.Error("load catalog", "config", *configDir, "error", err)
 		return 1
+	}
+
+	profile, _, err := bootstrap.LoadProfile(*configDir)
+	if err != nil {
+		logger.Error("load profile", "config", *configDir, "error", err)
+		return 1
+	}
+	policy := profile.Policy
+	// Policy provides defaults; explicit CLI flags win.
+	if !setFlags["dry-run"] && policy.DryRun {
+		*dryRun = true
+	}
+	if !setFlags["keep-going"] && policy.ContinueOnError {
+		*keepGoing = true
+	}
+	if !setFlags["yes"] && !policy.RequireConfirmation {
+		*assumeYes = true
+	}
+	if !setFlags["state"] {
+		*statePath = policy.StateFile
 	}
 
 	if *list {
@@ -115,6 +132,14 @@ func Run(ctx context.Context, args []string, streams Streams) int {
 		plan.Print(streams.Stdout)
 		return 0
 	}
+
+	if !*skipOSCheck {
+		if err := bootstrap.CheckUbuntu(""); err != nil {
+			logger.Error("unsupported host", "error", err)
+			return 1
+		}
+	}
+
 	if !*assumeYes && (*noTUI || *all || len(flags.Args()) > 0) {
 		plan.Print(streams.Stdout)
 		fmt.Fprint(streams.Stdout, "\nRun these commands? [y/N] ")
@@ -126,11 +151,30 @@ func Run(ctx context.Context, args []string, streams Streams) int {
 		}
 	}
 
+	if *resetState && *statePath != "" {
+		if err := os.Remove(*statePath); err != nil && !os.IsNotExist(err) {
+			logger.Error("reset state", "path", *statePath, "error", err)
+			return 1
+		}
+	}
+	state, err := bootstrap.LoadState(*statePath)
+	if err != nil {
+		logger.Error("load state", "path", *statePath, "error", err)
+		return 1
+	}
+	if state.Profile == "" {
+		state.Profile = profile.Metadata.Name
+	}
+	if count := state.Count(); count > 0 {
+		fmt.Fprintf(streams.Stdout, "Resuming: %d command(s) already completed will be skipped.\n", count)
+	}
+
 	runner := bootstrap.Runner{
 		LogDir:    filepath.Join(".bootstrap", "logs"),
 		Stdout:    streams.Stdout,
 		Stderr:    streams.Stderr,
 		KeepGoing: *keepGoing,
+		State:     state,
 	}
 	if err := runner.Run(ctx, plan); err != nil {
 		logger.Error("bootstrap failed", "error", err)

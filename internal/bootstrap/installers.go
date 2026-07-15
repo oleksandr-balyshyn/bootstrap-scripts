@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -22,8 +21,21 @@ func (a aptAsset) commands() ([]Command, error) {
 		if len(a.Packages) == 0 {
 			return nil, fmt.Errorf("apt asset %q has no packages or action", a.ID)
 		}
-		args := append([]string{"install", "-y"}, a.Packages...)
-		return []Command{{Program: "apt", Args: args, Sudo: true}}, nil
+		// One package per command so a single failed or unavailable package is
+		// skipped and the rest of the set still installs.
+		commands := make([]Command, 0, len(a.Packages))
+		for _, pkg := range a.Packages {
+			if pkg == "" {
+				return nil, fmt.Errorf("apt asset %q contains an empty package name", a.ID)
+			}
+			commands = append(commands, Command{
+				Program:         "apt",
+				Args:            []string{"install", "-y", pkg},
+				Sudo:            true,
+				ContinueOnError: true,
+			})
+		}
+		return commands, nil
 	default:
 		return nil, fmt.Errorf("unsupported apt action %q", a.Action)
 	}
@@ -58,7 +70,7 @@ func (a snapAsset) commands() ([]Command, error) {
 		if pkg.Channel != "" {
 			args = append(args, "--channel", pkg.Channel)
 		}
-		commands = append(commands, Command{Program: "snap", Args: args, Sudo: true})
+		commands = append(commands, Command{Program: "snap", Args: args, Sudo: true, ContinueOnError: true})
 	}
 	return commands, nil
 }
@@ -83,7 +95,7 @@ func (a flatpakAsset) commands() ([]Command, error) {
 	}
 	commands := make([]Command, 0, len(a.Refs))
 	for _, ref := range a.Refs {
-		commands = append(commands, Command{Program: "flatpak", Args: []string{"install", a.Remote, ref, "-y"}})
+		commands = append(commands, Command{Program: "flatpak", Args: []string{"install", a.Remote, ref, "-y"}, ContinueOnError: true})
 	}
 	return commands, nil
 }
@@ -164,29 +176,3 @@ func (a sdkmanAsset) commands() ([]Command, error) {
 }
 
 func (a sdkmanAsset) getID() string { return a.ID }
-
-type fontAsset struct {
-	ID         string   `yaml:"id"`
-	Repository string   `yaml:"repository"`
-	Release    string   `yaml:"release"`
-	Families   []string `yaml:"families"`
-}
-
-func (a fontAsset) commands() ([]Command, error) {
-	if len(a.Families) == 0 {
-		return nil, fmt.Errorf("font asset %q requires families", a.ID)
-	}
-	release := a.Release
-	if release == "" {
-		release = "latest"
-	}
-	executable, err := os.Executable()
-	if err != nil {
-		executable = os.Args[0]
-	}
-	args := []string{"--install-nerd-fonts", "--nerd-font-release", release}
-	args = append(args, a.Families...)
-	return []Command{{Program: executable, Args: args}}, nil
-}
-
-func (a fontAsset) getID() string { return a.ID }

@@ -44,6 +44,17 @@ type Command struct {
 	Program string
 	Args    []string
 	Sudo    bool
+	// ContinueOnError marks a command whose failure is non-fatal: the runner
+	// logs it, leaves it unrecorded in state (so it retries on the next run),
+	// and proceeds with the remaining commands. It is used for per-package
+	// installs so one bad package does not abort the whole plan.
+	ContinueOnError bool
+	// SkipState marks a command that bypasses uboot's resume state entirely:
+	// it is always run and never recorded. This is used for delegated tools
+	// (binstaller, nerd-fonts-installer, dotbot) that manage their own state
+	// and are idempotent, so re-invoking them resumes their own work while
+	// still picking up config changes uboot cannot see from the command line.
+	SkipState bool
 }
 
 type moduleFile struct {
@@ -185,16 +196,17 @@ func detectDependencyCycles(catalog Catalog) error {
 }
 
 type compiler struct {
-	apt       map[string]aptAsset
-	snap      map[string]snapAsset
-	flatpak   map[string]flatpakAsset
-	shell     map[string]shellAsset
-	cargo     map[string]cargoAsset
-	sdkman    map[string]sdkmanAsset
-	fonts     map[string]fontAsset
-	binary    map[string]binaryAsset
-	dotfile   map[string]dotfilesAsset
-	localBase string
+	apt        map[string]aptAsset
+	snap       map[string]snapAsset
+	flatpak    map[string]flatpakAsset
+	shell      map[string]shellAsset
+	cargo      map[string]cargoAsset
+	sdkman     map[string]sdkmanAsset
+	nerdfonts  map[string]nerdFontsAsset
+	binary     map[string]binaryAsset
+	binstaller map[string]binstallerAsset
+	dotfile    map[string]dotfilesAsset
+	localBase  string
 }
 
 func loadCompiler(fsys fs.FS, dir, localBase string) (compiler, error) {
@@ -209,8 +221,9 @@ func loadCompiler(fsys fs.FS, dir, localBase string) (compiler, error) {
 		{"shell.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "shell.yaml"), &c.shell) }},
 		{"cargo.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "cargo.yaml"), &c.cargo) }},
 		{"sdkman.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "sdkman.yaml"), &c.sdkman) }},
-		{"fonts.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "fonts.yaml"), &c.fonts) }},
+		{"nerd-fonts.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "nerd-fonts.yaml"), &c.nerdfonts) }},
 		{"binary.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "binary.yaml"), &c.binary) }},
+		{"binstaller.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "binstaller.yaml"), &c.binstaller) }},
 		{"dotfiles.yaml", func() error { return loadAssetMap(fsys, filepath.Join(dir, "dotfiles.yaml"), &c.dotfile) }},
 	}
 	for _, loader := range loaders {
@@ -259,18 +272,24 @@ func (c compiler) compile(installer, id string) ([]Command, error) {
 			return nil, unknownAsset(installer, id)
 		}
 		return asset.commands()
-	case "font":
-		asset, ok := c.fonts[id]
+	case "nerd-fonts":
+		asset, ok := c.nerdfonts[id]
 		if !ok {
 			return nil, unknownAsset(installer, id)
 		}
-		return asset.commands()
+		return asset.commands(c.localBase)
 	case "binary":
 		asset, ok := c.binary[id]
 		if !ok {
 			return nil, unknownAsset(installer, id)
 		}
 		return asset.commands()
+	case "binstaller":
+		asset, ok := c.binstaller[id]
+		if !ok {
+			return nil, unknownAsset(installer, id)
+		}
+		return asset.commands(c.localBase)
 	case "dotfiles":
 		asset, ok := c.dotfile[id]
 		if !ok {

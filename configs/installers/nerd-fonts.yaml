@@ -1,0 +1,8 @@
+# nerd-fonts installer assets. Each asset delegates a font list to the external
+# nerd-fonts-installer CLI. The installer binary (nerdfont-install) is provided
+# by the binstaller profile under ${HOME}/.apps, so it is referenced by its
+# managed path rather than assumed to be on PATH.
+assets:
+  - id: nerd-fonts
+    command: ${HOME}/.apps/nerd-font-installer/bin/nerdfont-install
+    config: nerd-fonts/fonts.yaml

@@ -1,0 +1,51 @@
+# Config consumed by the external nerd-fonts-installer CLI
+# (https://github.com/worxbend/nerd-fonts-installer). uboot runs
+# `nerdfont-install --config <this file>`; the installer downloads the release
+# archives from ryanoasis/nerd-fonts, extracts .ttf/.otf/.ttc files into
+# per-family folders, and refreshes the font cache.
+release: latest
+destination: ~/.local/share/fonts/NerdFonts
+refresh_font_cache: true
+families:
+  - JetBrainsMono
+  - MPlus
+  - Terminus
+  - FantasqueSansMono
+  - Noto
+  - Hack
+  - HeavyData
+  - "3270"
+  - FiraCode
+  - LiberationMono
+  - RobotoMono
+  - Mononoki
+  - Ubuntu
+  - DroidSansMono
+  - Monoid
+  - SpaceMono
+  - SourceCodePro
+  - ComicShannsMono
+  - NerdFontsSymbolsOnly
+  - DaddyTimeMono
+  - UbuntuMono
+  - Meslo
+  - FiraMono
+  - CodeNewRoman
+  - CascadiaCode
+  - Hasklig
+  - DejaVuSansMono
+  - ZedMono
+  - Inconsolata
+  - Hermit
+  - CommitMono
+  - Agave
+  - GeistMono
+  - Monaspace
+  - ShareTechMono
+  - Recursive
+  - D2Coding
+  - EnvyCodeR
+  - IosevkaTerm
+  - Lekton
+  - Lilex
+  - VictorMono

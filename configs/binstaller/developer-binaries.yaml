@@ -1,0 +1,361 @@
+# BinaryDistributionProfile consumed by the external `binstaller` CLI
+# (https://github.com/worxbend/binstaller). uboot bootstraps the binstaller
+# binary, then runs `binstaller apply --config <this file>`; binstaller downloads,
+# verifies, installs, and keeps its own per-tool state so reruns resume natively.
+#
+# NOTE: binstaller rejects `installer:` shell blocks, so helm and kustomize (which
+# install via upstream scripts) are handled by uboot's `binary` installer instead.
+apiVersion: binstaller.io/v1alpha1
+kind: BinaryDistributionProfile
+
+metadata:
+  name: developer-binaries
+  labels:
+    role: development
+    platform: linux-amd64
+  annotations:
+    binstaller.io/description: Binary tool installer for the Ubuntu workstation bootstrap.
+
+spec:
+  policy:
+    mode: developer
+    continueOnError: true
+    appsDir: "${HOME}/.apps"
+    requireConfirmation: false
+    allowSudoSymlinks: true
+    allowDynamicLatestUrls: true
+    allowMissingChecksums: true
+    stateFile: developer-binaries.state.json
+
+  vars:
+    platform: linux
+    arch: amd64
+    linuxArch: x86_64
+    muslTarget: x86_64-unknown-linux-musl
+    gnuTarget: x86_64-unknown-linux-gnu
+
+  versions:
+    yazi: v26.5.6
+    zig: 0.15.2
+    kind: 0.31.0
+    zellij: 0.44.1
+    lazygit: 0.61.0
+    jujutsu: 0.40.0
+    dotbotGo: v0.3.0
+    nerdFontInstaller: v1.0.6
+
+    minikube:
+      dynamic:
+        type: latest-url
+        note: Google Storage latest Linux amd64 binary endpoint.
+
+    xplr:
+      dynamic:
+        type: latest-url
+        note: GitHub latest xplr Linux archive endpoint.
+
+    kubectl:
+      resolver:
+        type: http-text
+        url: https://dl.k8s.io/release/stable.txt
+
+    neovide:
+      dynamic:
+        type: latest-url
+        note: GitHub latest Neovide AppImage endpoint.
+
+    neovim:
+      dynamic:
+        type: latest-url
+        note: GitHub latest Neovim Linux x86_64 archive endpoint.
+
+  plan:
+    - name: yazi
+      kind: binary-tool
+      description: Terminal file manager.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: yazi
+        installDir: "${appsDir}/yazi"
+        download:
+          url: "https://github.com/sxyazi/yazi/releases/download/${version}/yazi-${gnuTarget}.zip"
+          filename: yazi.zip
+          archive:
+            type: zip
+            extract:
+              files:
+                - from: "yazi-${gnuTarget}/yazi"
+                  to: bin/yazi
+                - from: "yazi-${gnuTarget}/ya"
+                  to: bin/ya
+        executables:
+          - path: bin/yazi
+          - path: bin/ya
+
+    - name: zig
+      kind: binary-tool
+      description: Zig compiler and toolchain.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: zig
+        installDir: "${appsDir}/zig"
+        download:
+          url: "https://ziglang.org/download/${version}/zig-${linuxArch}-linux-${version}.tar.xz"
+          filename: zig.tar.xz
+          archive:
+            type: tar.xz
+            extract:
+              directories:
+                - from: "zig-${linuxArch}-linux-${version}"
+                  to: "bin/zig-${linuxArch}-linux-${version}"
+        executables:
+          - path: "bin/zig-${linuxArch}-linux-${version}/zig"
+        symlinks:
+          - path: bin/zig
+            target: "bin/zig-${linuxArch}-linux-${version}/zig"
+
+    - name: minikube
+      kind: binary-tool
+      description: Local Kubernetes cluster runner.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: minikube
+        installDir: "${appsDir}/minikube"
+        download:
+          url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          filename: minikube
+        executables:
+          - path: bin/minikube
+
+    - name: xplr
+      kind: binary-tool
+      description: Terminal file explorer.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: xplr
+        installDir: "${appsDir}/xplr"
+        download:
+          url: https://github.com/sayanarijit/xplr/releases/latest/download/xplr-linux.tar.gz
+          filename: xplr-linux.tar.gz
+          archive:
+            type: tar.gz
+            extract:
+              files:
+                - from: xplr
+                  to: bin/xplr
+        executables:
+          - path: bin/xplr
+
+    - name: kind
+      kind: binary-tool
+      description: Kubernetes in Docker.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: kind
+        installDir: "${appsDir}/kind"
+        download:
+          url: "https://kind.sigs.k8s.io/dl/v${version}/kind-linux-amd64"
+          filename: kind
+        executables:
+          - path: bin/kind
+
+    - name: zellij
+      kind: binary-tool
+      description: Terminal workspace and multiplexer.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: zellij
+        installDir: "${appsDir}/zellij"
+        download:
+          url: "https://github.com/zellij-org/zellij/releases/download/v${version}/zellij-${muslTarget}.tar.gz"
+          filename: zellij.tar.gz
+          archive:
+            type: tar.gz
+            extract:
+              files:
+                - from: zellij
+                  to: bin/zellij
+        executables:
+          - path: bin/zellij
+
+    - name: kubectl
+      kind: binary-tool
+      description: Kubernetes command-line client.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: kubectl
+        installDir: "${appsDir}/kubectl"
+        download:
+          url: "https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
+          filename: kubectl
+        executables:
+          - path: bin/kubectl
+
+    - name: neovide
+      kind: binary-tool
+      description: Graphical Neovim frontend.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: neovide
+        installDir: "${appsDir}/neovide"
+        download:
+          url: https://github.com/neovide/neovide/releases/latest/download/neovide.AppImage
+          filename: neovide
+        executables:
+          - path: bin/neovide
+
+    - name: neovim
+      kind: binary-tool
+      description: Neovim editor binary distribution.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: neovim
+        installDir: "${appsDir}/neovim"
+        download:
+          url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+          filename: neovim.tar.gz
+          archive:
+            type: tar.gz
+            extract:
+              directories:
+                - from: nvim-linux-x86_64
+                  to: "."
+        executables:
+          - path: bin/nvim
+        symlinks:
+          - path: bin/neovim
+            target: bin/nvim
+          - path: bin/vim
+            target: bin/nvim
+
+    - name: lazygit
+      kind: binary-tool
+      description: Terminal UI for Git.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: lazygit
+        installDir: "${appsDir}/lazygit"
+        download:
+          url: "https://github.com/jesseduffield/lazygit/releases/download/v${version}/lazygit_${version}_Linux_x86_64.tar.gz"
+          filename: lazygit.tar.gz
+          archive:
+            type: tar.gz
+            extract:
+              files:
+                - from: lazygit
+                  to: bin/lazygit
+        executables:
+          - path: bin/lazygit
+        symlinks:
+          - path: bin/lzg
+            target: bin/lazygit
+
+    - name: jujutsu
+      kind: binary-tool
+      description: Jujutsu version control system.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: jujutsu
+        installDir: "${appsDir}/jujutsu"
+        download:
+          url: "https://github.com/jj-vcs/jj/releases/download/v${version}/jj-v${version}-${muslTarget}.tar.gz"
+          filename: jj.tar.gz
+          archive:
+            type: tar.gz
+            extract:
+              files:
+                - from: jj
+                  to: bin/jj
+        executables:
+          - path: bin/jj
+        symlinks:
+          - path: bin/jj-scm
+            target: bin/jj
+          - path: bin/jujutsu
+            target: bin/jj
+
+    - name: dotbot
+      kind: binary-tool
+      description: Worxbend Go implementation of Dotbot.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: dotbotGo
+        installDir: "${appsDir}/dotbot"
+        download:
+          url: "https://github.com/worxbend/dotbot-go/releases/download/${version}/dotbot-linux-amd64.tar.gz"
+          filename: dotbot-go.tar.gz
+          checksum:
+            algorithm: sha256
+            value: 45d49e064d8684926fed97ad051c6ecebbf796a3c709edaa7a4a166b2978633d
+          archive:
+            type: tar.gz
+            extract:
+              files:
+                - from: dotbot
+                  to: bin/dotbot
+        executables:
+          - path: bin/dotbot
+
+    - name: nerd-font-installer
+      kind: binary-tool
+      description: Worxbend Nerd Fonts installer.
+      when:
+        os:
+          family: linux
+        architecture: amd64
+      spec:
+        versionRef: nerdFontInstaller
+        installDir: "${appsDir}/nerd-font-installer"
+        download:
+          url: "https://github.com/worxbend/nerd-fonts-installer/releases/download/${version}/nerdfont-install_${version}_linux_amd64.tar.gz"
+          filename: nerd-font-installer.tar.gz
+          checksum:
+            algorithm: sha256
+            value: 25c70bcf327930282823fa6abecc54f14f53fb44b01f988187a07218b711a1a7
+          archive:
+            type: tar.gz
+            extract:
+              files:
+                - from: "nerdfont-install_${version}_linux_amd64/nerdfont-install"
+                  to: bin/nerdfont-install
+        executables:
+          - path: bin/nerdfont-install
+        symlinks:
+          - path: bin/nerd-font-installer
+            target: bin/nerdfont-install

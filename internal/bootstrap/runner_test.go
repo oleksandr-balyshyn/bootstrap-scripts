@@ -38,6 +38,12 @@ func (f packageCheckerFunc) Installable(ctx context.Context, pkg string) bool {
 	return f(ctx, pkg)
 }
 
+// allowAll returns a package checker that treats every package as installable,
+// keeping runner tests independent of the host's apt cache.
+func allowAll() packageCheckerFunc {
+	return packageCheckerFunc(func(context.Context, string) bool { return true })
+}
+
 func TestRunnerUsesExecutor(t *testing.T) {
 	executor := &recordingExecutor{}
 	plan := Plan{Modules: []Module{{

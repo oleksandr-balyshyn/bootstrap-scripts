@@ -35,7 +35,7 @@ func (a dotfilesAsset) commands(localBase string) ([]Command, error) {
 		a.Ref = "main"
 	}
 	if a.Dotbot == "" {
-		a.Dotbot = "${HOME}/.local/bin/dotbot"
+		a.Dotbot = "${HOME}/.apps/dotbot/bin/dotbot"
 	}
 	for _, link := range a.Links {
 		if link.Target == "" || link.Source == "" {
@@ -46,7 +46,7 @@ func (a dotfilesAsset) commands(localBase string) ([]Command, error) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "dotbot=%s\n", shellDouble(a.Dotbot))
 	b.WriteString(`if [ ! -x "$dotbot" ]; then
-  dotbot="${HOME}/.local/share/uboot/apps/dotbot/1.24.0/dotbot"
+  dotbot="${HOME}/.local/bin/dotbot"
 fi
 `)
 	if a.Local != "" {

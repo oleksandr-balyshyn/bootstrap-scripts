@@ -1,7 +1,7 @@
 assets:
   - id: system-bootstrap
     local: ../dotfiles
-    dotbot: ${HOME}/.local/bin/dotbot
+    dotbot: ${HOME}/.apps/dotbot/bin/dotbot
     create:
       - ~/Downloads
       - ~/.vim/undo-history

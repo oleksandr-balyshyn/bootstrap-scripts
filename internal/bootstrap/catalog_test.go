@@ -82,9 +82,18 @@ func TestLoadCatalogBuildsTypedCommands(t *testing.T) {
 	if !module.Default {
 		t.Fatal("module default flag was not preserved")
 	}
-	apt := module.Steps[0].Commands[0]
-	if got := apt.String(); got != "sudo apt install -y curl git" {
-		t.Fatalf("apt command = %q", got)
+	aptStep := module.Steps[0]
+	if len(aptStep.Commands) != 2 {
+		t.Fatalf("apt step produced %d commands, want 2 (one per package)", len(aptStep.Commands))
+	}
+	if got := aptStep.Commands[0].String(); got != "sudo apt install -y curl" {
+		t.Fatalf("apt command[0] = %q", got)
+	}
+	if got := aptStep.Commands[1].String(); got != "sudo apt install -y git" {
+		t.Fatalf("apt command[1] = %q", got)
+	}
+	if !aptStep.Commands[0].ContinueOnError {
+		t.Fatal("apt install command should be best-effort (ContinueOnError)")
 	}
 	snap := module.Steps[1].Commands[0]
 	if got := snap.String(); got != "sudo snap install ghostty --classic" {
@@ -399,16 +408,17 @@ func TestLoadCatalogBuildsLocalDotfilesCommand(t *testing.T) {
 
 func minimalConfigFS(modules string) fstest.MapFS {
 	files := fstest.MapFS{
-		"modules.yaml":             {Data: []byte(modules)},
-		"installers/apt.yaml":      {Data: []byte("assets:\n  - id: base\n    packages: [curl, git]\n")},
-		"installers/snap.yaml":     {Data: []byte("assets:\n  - id: terminal\n    packages:\n      - name: ghostty\n        classic: true\n")},
-		"installers/flatpak.yaml":  {Data: []byte("assets: []\n")},
-		"installers/shell.yaml":    {Data: []byte("assets: []\n")},
-		"installers/cargo.yaml":    {Data: []byte("assets: []\n")},
-		"installers/sdkman.yaml":   {Data: []byte("assets: []\n")},
-		"installers/fonts.yaml":    {Data: []byte("assets: []\n")},
-		"installers/binary.yaml":   {Data: []byte("assets: []\n")},
-		"installers/dotfiles.yaml": {Data: []byte("assets: []\n")},
+		"modules.yaml":               {Data: []byte(modules)},
+		"installers/apt.yaml":        {Data: []byte("assets:\n  - id: base\n    packages: [curl, git]\n")},
+		"installers/snap.yaml":       {Data: []byte("assets:\n  - id: terminal\n    packages:\n      - name: ghostty\n        classic: true\n")},
+		"installers/flatpak.yaml":    {Data: []byte("assets: []\n")},
+		"installers/shell.yaml":      {Data: []byte("assets: []\n")},
+		"installers/cargo.yaml":      {Data: []byte("assets: []\n")},
+		"installers/sdkman.yaml":     {Data: []byte("assets: []\n")},
+		"installers/nerd-fonts.yaml": {Data: []byte("assets: []\n")},
+		"installers/binary.yaml":     {Data: []byte("assets: []\n")},
+		"installers/binstaller.yaml": {Data: []byte("assets: []\n")},
+		"installers/dotfiles.yaml":   {Data: []byte("assets: []\n")},
 	}
 	return files
 }

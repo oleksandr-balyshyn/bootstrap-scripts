@@ -10,6 +10,18 @@ func binaryShellCommand(script string) []Command {
 	return []Command{{Program: "bash", Args: []string{"-lc", bootstrapShellPrelude() + checksumShellPrelude() + script}}}
 }
 
+// delegatedShellCommands wraps a script that invokes an external, self-resuming
+// tool (binstaller, nerd-fonts-installer). Such commands bypass uboot's resume
+// state: they always run and are never recorded, so the delegated tool decides
+// what work remains and config changes it sees are always applied.
+func delegatedShellCommands(script string) []Command {
+	commands := shellCommand(script, false)
+	for i := range commands {
+		commands[i].SkipState = true
+	}
+	return commands
+}
+
 func bootstrapShellPrelude() string {
 	return `set -euo pipefail
 
@@ -63,7 +75,6 @@ source_bootstrap_env() {
   prepend_path "$HOME/.go/bin"
   prepend_path "$HOME/.cargo/bin"
   prepend_path "$HOME/.local/share/uboot/toolchains/go/1.26.2/bin"
-  prepend_path "$HOME/.local/share/uboot/apps/dotbot/1.24.0"
   source_env_file_if_exists "$HOME/.cargo/env"
   source_env_file_if_exists "$HOME/.sdkman/bin/sdkman-init.sh"
   export PATH
@@ -101,14 +112,6 @@ verify_sha256() {
 }
 
 `
-}
-
-func shellWords(values []string) []string {
-	words := make([]string, 0, len(values))
-	for _, value := range values {
-		words = append(words, shellWord(value))
-	}
-	return words
 }
 
 func shellWord(value string) string {

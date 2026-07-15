@@ -1,0 +1,7 @@
+# binstaller installer assets. Each asset delegates a BinaryDistributionProfile
+# to the external `binstaller` CLI, which owns download, checksum verification,
+# extraction, symlinking, and per-tool resume state.
+assets:
+  - id: developer-binaries
+    command: binstaller
+    profile: binstaller/developer-binaries.yaml

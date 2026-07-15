@@ -1,0 +1,35 @@
+# SystemBootstrapProfile — the binstaller-style envelope for the whole Ubuntu
+# workstation bootstrap. It carries run policy and metadata; the ordered plan of
+# selectable work lives in modules.yaml, and binary/font installs are delegated
+# to external profiles (configs/binstaller/, configs/nerd-fonts/).
+#
+# CLI flags always override policy values set here.
+apiVersion: bootstrap.worxbend.io/v1alpha1
+kind: SystemBootstrapProfile
+
+metadata:
+  name: ubuntu-workstation
+  labels:
+    platform: linux-amd64
+    distro: ubuntu
+  annotations:
+    bootstrap.worxbend.io/description: Ubuntu workstation bootstrap driven by uboot.
+
+spec:
+  policy:
+    # Print commands without executing them.
+    dryRun: false
+    # Continue past a failed command (still exits non-zero if any failed).
+    continueOnError: false
+    # Prompt before executing a non-interactive selection.
+    requireConfirmation: true
+    # Root for binstaller-managed application installs.
+    appsDir: "${HOME}/.apps"
+    # Resume state file; completed commands here are skipped on rerun.
+    stateFile: .bootstrap/state.json
+    # Only Ubuntu (and close Debian/Ubuntu derivatives) are supported.
+    distro: ubuntu
+
+  vars:
+    platform: linux
+    arch: amd64

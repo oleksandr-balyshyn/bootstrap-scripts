@@ -201,38 +201,42 @@ modules:
         installer: apt
         asset: containers
 
+  - id: binstaller
+    title: Binstaller CLI
+    description: Install the binstaller CLI used to manage binary distributions.
+    source: https://github.com/worxbend/binstaller
+    tags: [development, cli]
+    steps:
+      - name: Binstaller install prerequisites
+        installer: apt
+        asset: binary-prerequisites
+      - name: Install binstaller
+        installer: binary
+        asset: binstaller
+
   - id: binary-dists
     title: Binary Distributions
-    description: Install upstream binary releases under the managed uboot app root.
-    source: scripts/binary-dist.sh
+    description: Install upstream developer binaries via binstaller, plus helm/kustomize scripts.
+    source: configs/binstaller/developer-binaries.yaml
     tags: [development, cli, kubernetes]
+    depends_on: [binstaller]
     steps:
       - name: Binary install prerequisites
         installer: apt
         asset: binary-prerequisites
-      - name: Install binary distributions
+      - name: Install developer binaries with binstaller
+        installer: binstaller
+        asset: developer-binaries
+      - name: Install helm and kustomize
         installer: binary
-        asset: upstream-binaries
-
-  - id: dotbot
-    title: Dotbot
-    description: Install Dotbot before dotfile management runs.
-    source: https://github.com/anishathalye/dotbot
-    tags: [dotfiles, configuration]
-    steps:
-      - name: Dotbot install prerequisites
-        installer: apt
-        asset: binary-prerequisites
-      - name: Install Dotbot
-        installer: binary
-        asset: dotbot
+        asset: k8s-script-tools
 
   - id: dotfiles
     title: Dotfiles
-    description: Apply the vendored Ubuntu dotfiles with Dotbot.
+    description: Apply the vendored Ubuntu dotfiles with the binstaller-provided dotbot.
     source: dotfiles/install.conf.yaml
     tags: [dotfiles, configuration]
-    depends_on: [dotbot]
+    depends_on: [binary-dists]
     steps:
       - name: Dotfiles prerequisites
         installer: apt
@@ -312,15 +316,16 @@ modules:
 
   - id: nerd-fonts
     title: Nerd Fonts
-    description: Download selected Nerd Font release archives and install them locally.
-    source: configs/installers/fonts.yaml
+    description: Install selected Nerd Fonts via the nerd-fonts-installer CLI.
+    source: configs/nerd-fonts/fonts.yaml
     tags: [fonts, desktop]
+    depends_on: [binary-dists]
     steps:
       - name: Font install prerequisites
         installer: apt
         asset: font-prerequisites
       - name: Install Nerd Fonts
-        installer: font
+        installer: nerd-fonts
         asset: nerd-fonts
 
   - id: zsh-plugins
